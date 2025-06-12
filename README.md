@@ -1,7 +1,8 @@
 <div align="center"><span style="font-size: larger"> <a href="./README.md" target="_blank">English</a> | <a href="./README-zh.md" target="_blank">简体中文</a>
 </span></div>
+<br>
 <div align="center"><p align="center">
-  <img src="./assets/icons/web-codee-logo.png" width="60%" />
+  <img src="https://github.com/user-attachments/assets/9b4b2f74-ff84-40b3-8ccf-d34cedb69ec2" width="60%" />
 </p></div>
 
 <div align="center">
