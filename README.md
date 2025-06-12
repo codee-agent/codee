@@ -32,15 +32,15 @@ Codee (**/koʊˈdiː/**) is an AI-powered programming tool. The name is derived 
 Imagine such mornings: 
 Beside a still-warm coffee mug, developers converse with Codee as naturally as collaborating with an old friend. When a human says “Help add risk control rules to the payment module using the pattern we discussed last week,” the AI already understands the business objectives, team conventions, and even yesterday’s meeting notes within context.
 
-This is our future: 
-◼ When repetitive code becomes AI’s responsibility, developers finally stand tall, freely exploring under the starlight of architectural design 
-◼ During lonely late-night debugging sessions, Codee becomes an tireless guardian: “Concurrency issue risks detected - three solutions prepared” 
-◼ Every code review transforms into a creative workshop - humans focus on strategic insights while AI presents executable solutions in real-time
+This is our future:  
+◼ When repetitive code becomes AI’s responsibility, developers finally stand tall, freely exploring under the starlight of architectural design  
+◼ During lonely late-night debugging sessions, Codee becomes an tireless guardian: "Concurrency issue risks detected - three solutions prepared"  
+◼ Every code review transforms into a creative workshop - humans focus on strategic insights while AI presents executable solutions in real-time  
 
-Codee will achieve: 
-✓ Code Assurance: Master 20+ team coding styles to make AI-generated code reach senior engineer-level quality
-✓ Zero-Lag Innovation: Reduce prototype development time from architecture design by 80%, turning inspiration into reality instantly
-✓ Full Automation: Free your hands - you command, Codee executes
+Codee will achieve:  
+✓ Code Assurance: Master 20+ team coding styles to make AI-generated code reach senior engineer-level quality  
+✓ Zero-Lag Innovation: Reduce prototype development time from architecture design by 80%, turning inspiration into reality instantly  
+✓ Full Automation: Free your hands - you command, Codee executes  
 
 We don’t believe in “replacement” - we create “rebirth”: When AI handles tactical labor, developers become true digital poets - weaving business insights into verse, composing new chapters through system design, defining software engineering’s renaissance through human-AI collaboration.
 
