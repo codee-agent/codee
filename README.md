@@ -25,7 +25,7 @@ Codee (**/koʊˈdiː/**) is an AI-powered programming tool. The name is derived 
 
 ## Getting Started and Model Configuration
 
-- Please read the [**guidance document**]( carefully!   (coming soon!)
+- Please read the [**guidance document**]( carefully!)   (coming soon!)
 
 
 ## The Vision of Codee：Where Coders Shine Brighter | 让开发者永远发光
