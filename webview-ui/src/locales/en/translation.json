@@ -1,0 +1,265 @@
+{
+	"settings": {
+		"title": "Settings",
+		"done": "Done",
+		"cancel": "Cancel",
+		"language": {
+			"title": "Language Settings"
+		},
+		"autocomplete": {
+			"title": "Autocomplete Settings",
+			"provider": "Provider",
+			"apiBase": "Base URL",
+			"apiKey": "API Key",
+			"model": "Model",
+			"enable": "Enable Autocomplete"
+		},
+		"other": {
+			"title": "Other Settings",
+			"customInstructions": "Custom Instructions",
+			"customInstructionsDesc": "These instructions are added to the end of the system prompt sent with every request.",
+			"planActSeparateModels": "Use different models for Plan and Act modes",
+			"planActSeparateModelsDesc": "Switching between Plan and Act mode will persist the API and model used in the previous mode. This may be helpful e.g. when using a strong reasoning model to architect a plan for a cheaper coding model to act on.",
+			"advancedSettings": "Advanced Settings",
+			"debug": "Debug",
+			"resetState": "Reset State",
+			"resetStateDesc": "This will reset all global state and secret storage in the extension."
+		},
+		"feedback": {
+			"text": "If you have any questions or feedback, feel free to open an issue at",
+			"version": "v{{version}}"
+		},
+		"tabs": {
+			"apiConfig": {
+				"name": "API Configuration",
+				"tooltip": "API Configuration",
+				"header": "API Configuration"
+			},
+			"general": {
+				"name": "General",
+				"tooltip": "General Settings",
+				"header": "General Settings"
+			},
+			"features": {
+				"name": "Features",
+				"tooltip": "Feature Settings",
+				"header": "Feature Settings"
+			},
+			"browser": {
+				"name": "Browser",
+				"tooltip": "Browser Settings",
+				"header": "Browser Settings"
+			},
+			"terminal": {
+				"name": "Terminal",
+				"tooltip": "Terminal Settings",
+				"header": "Terminal Settings"
+			},
+			"debug": {
+				"name": "Debug",
+				"tooltip": "Debug Tools",
+				"header": "Debug"
+			},
+			"about": {
+				"name": "About",
+				"tooltip": "About Codee",
+				"header": "About"
+			}
+		},
+		"planMode": "Plan Mode",
+		"actMode": "Act Mode",
+		"api": {
+			"provider": "API Provider",
+			"selectModel": "Select a model...",
+			"model": "Model",
+			"baseUrl": "Base URL",
+			"apiKey": "API Key",
+			"modelId": "Model ID",
+			"customBaseUrl": "Use custom base URL",
+			"customVpcEndpoint": "Use custom VPC endpoint",
+			"crossRegionInference": "Use cross-region inference",
+			"promptCaching": "Use prompt caching",
+			"awsCredentials": "AWS Credentials",
+			"awsProfile": "AWS Profile",
+			"awsAccessKey": "AWS Access Key",
+			"awsSecretKey": "AWS Secret Key",
+			"awsSessionToken": "AWS Session Token",
+			"awsRegion": "AWS Region",
+			"selectRegion": "Select a region...",
+			"gcpProjectId": "Google Cloud Project ID",
+			"gcpRegion": "Google Cloud Region",
+			"modelConfig": "Model Configuration",
+			"supportsImages": "Supports Images",
+			"supportsComputerUse": "Supports Computer Use",
+			"enableR1Format": "Enable R1 messages format",
+			"contextWindowSize": "Context Window Size",
+			"maxOutputTokens": "Max Output Tokens",
+			"inputPrice": "Input price",
+			"outputPrice": "Output price",
+			"temperature": "Temperature",
+			"sortProviderRouting": "Sort underlying provider routing",
+			"default": "Default",
+			"price": "Price",
+			"throughput": "Throughput",
+			"latency": "Latency",
+			"reasoningEffort": "Modify reasoning effort",
+			"low": "low",
+			"high": "high",
+			"complexPrompts": "Codee uses complex prompts and works best with Claude or deepseek-v3 models. Less capable models may not work as expected."
+		}
+	},
+	"chat": {
+		"addContext": "Add Context",
+		"addImages": "Add Images",
+		"planMode": "Plan Mode",
+		"actMode": "Act Mode",
+		"planModeTooltip": "In Plan mode, Codee will gather information to architect a plan",
+		"actModeTooltip": "In Act mode, Codee will complete the task immediately",
+		"toggleModeHint": "Toggle with {{metaKey}}+Shift+A",
+		"send": "Send",
+		"placeholder": "Type a message...",
+		"welcome": {
+			"title": "Hi, I'm Codee",
+			"description": "You need to provide me with a detailed software development requirement description, so that I can break down the requirements into multiple steps for execution. I can view files, modify files, write files, execute commands, etc. I can even use MCP to create new tools and expand my abilities.",
+			"claudeLink": "Claude 3.7 Sonnet's",
+			"claudeLinkText": "Claude 3.7 Sonnet's",
+			"signupText": "Sign up for an account to get started for free, or use an API key that provides access to models like Claude 3.7 Sonnet.",
+			"getStarted": "Get Started for Free",
+			"useOwnApiKey": "Use your own API key",
+			"letsGo": "Let's go!"
+		}
+	},
+	"autoApprove": {
+		"title": "Auto-approve",
+		"none": "None",
+		"description": "Auto-approve allows Codee to perform the following actions without asking for permission. Please use with caution and only enable if you understand the risks.",
+		"maxRequests": "Max Requests:",
+		"maxRequestsDesc": "Codee will automatically make this many API requests before asking for approval to proceed with the task.",
+		"enableNotifications": "Enable Notifications",
+		"notificationsDesc": "Receive system notifications when Codee requires approval to proceed or when a task is completed.",
+		"actions": {
+			"enableAutoApprove": {
+				"label": "Enable auto-approve",
+				"shortName": "Enable",
+				"description": "Toggle the auto-approve feature on or off."
+			},
+			"readFiles": {
+				"label": "Read project files",
+				"shortName": "Read Local",
+				"description": "Allows Codee to read files within your workspace."
+			},
+			"readFilesExternally": {
+				"label": "Read all files",
+				"shortName": "Read (all)",
+				"description": "Allows Codee to read any file on your computer."
+			},
+			"editFiles": {
+				"label": "Edit project files",
+				"shortName": "Edit",
+				"description": "Allows Codee to modify files within your workspace."
+			},
+			"editFilesExternally": {
+				"label": "Edit all files",
+				"shortName": "Edit (all)",
+				"description": "Allows Codee to modify any file on your computer."
+			},
+			"executeSafeCommands": {
+				"label": "Execute safe commands",
+				"shortName": "Safe Commands",
+				"description": "Allows Codee to execute of safe terminal commands. If the model determines a command is potentially destructive, it will still require approval."
+			},
+			"executeAllCommands": {
+				"label": "Execute all commands",
+				"shortName": "All Commands",
+				"description": "Allows Codee to execute all terminal commands. Use at your own risk."
+			},
+			"useBrowser": {
+				"label": "Use the browser",
+				"shortName": "Browser",
+				"description": "Allows Codee to launch and interact with any website in a browser."
+			},
+			"useMcp": {
+				"label": "Use MCP servers",
+				"shortName": "MCP",
+				"description": "Allows Codee to use configured MCP servers which may modify filesystem or interact with APIs."
+			},
+			"enableAll": {
+				"label": "Enable all",
+				"shortName": "All",
+				"description": "Enable all actions."
+			},
+			"enableNotifications": {
+				"label": "Enable notifications",
+				"shortName": "Notifications",
+				"description": "Receive system notifications when Codee requires approval to proceed or when a task is completed."
+			}
+		}
+	},
+	"mcp": {
+		"tabs": {
+			"marketplace": "Marketplace",
+			"addRemote": "Add Remote",
+			"installed": "Installed"
+		},
+		"addServer": {
+			"title": "Add a remote MCP server by providing a name and its URL endpoint. Learn more",
+			"serverName": "Server Name",
+			"serverNamePlaceholder": "mcp-server",
+			"serverUrl": "Server URL",
+			"serverUrlPlaceholder": "https://example.com/mcp-server",
+			"addButton": "Add Server",
+			"addingButton": "Adding...",
+			"connectingMessage": "Connecting to server... This may take a few seconds.",
+			"editConfig": "Edit Configuration",
+			"errors": {
+				"nameRequired": "Server name is required",
+				"urlRequired": "Server URL is required",
+				"invalidUrl": "Invalid URL format",
+				"failedToAdd": "Failed to add server"
+			}
+		},
+		"installed": {
+			"description": "The Model Context Protocol ",
+			"modelContextProtocol": "Model Context Protocol",
+			"communityMadeServers": "community-made servers",
+			"seeDemo": "See a demo here.",
+			"configureServers": "Configure MCP Servers",
+			"advancedSettings": "Advanced MCP Settings",
+			"nomcpServers": "No MCP servers installed",
+			"useCommunityMadeServers": "enables communication with locally running MCP servers that provide additional tools and resources to extend Codee's capabilities. You can use",
+			"createNewMcpServer": "or ask Codee to create new tools specific to your workflow (e.g., \"add a tool that gets the latest npm docs\")."
+		},
+		"configuration": {
+			"title": "MCP Servers",
+			"done": "Done"
+		}
+	},
+	"account": {
+		"title": "Account",
+		"done": "Done",
+		"underConstruction": "Under construction..."
+	},
+	"CodeeRules": {
+		"manageRules": "Manage Codee Rules & Workflows",
+		"CodeeRules": "Codee Rules",
+		"globalRules": "Global Rules",
+		"CodeeWorkflows": "Codee Workflows",
+		"workspaceWorkflows": "Workspace Workflows",
+		"globalWorkflows": "Global Workflows",
+		"workspaceRules": "Workspace Rules",
+		"noRulesFound": "No rules found",
+		"editRuleFile": "Edit rule file",
+		"deleteRuleFile": "Delete rule file",
+		"newRuleFile": "New rule file...",
+		"createRuleFile": "Create rule file",
+		"newRuleFileButton": "New rule file",
+		"ruleNamePlaceholder": "rule-name (.md, .txt, or no extension)",
+		"invalidExtension": "Only .md, .txt, or no file extension allowed",
+		"ruleDescription": "Rules allow you to provide Codee with system-level guidance. Think of them as a persistent way to include context and preferences for your projects or globally for every conversation.",
+		"createWorkflowFile": "New workflow file",
+		"newWorkflowFile": "New workflow file...",
+		"workflowNamePlaceholder": "workflow-name (.md, .txt, or no extension)",
+		"noWorkflowsFound": "No rules found",
+		"workflowsDescription": "Workflows allow you to define a series of steps to guide Cline through a repetitive set of tasks, such as deploying a service or submitting a PR. To invoke a workflow, type /workflow-name in the chat."
+	}
+}

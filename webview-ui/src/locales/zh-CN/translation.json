@@ -1,0 +1,265 @@
+{
+	"settings": {
+		"title": "设置",
+		"done": "完成",
+		"cancel": "取消",
+		"language": {
+			"title": "语言设置"
+		},
+		"autocomplete": {
+			"title": "代码补全设置",
+			"provider": "提供商",
+			"apiBase": "服务器URL",
+			"apiKey": "API密钥",
+			"model": "模型",
+			"enable": "启用代码补全"
+		},
+		"other": {
+			"title": "其他设置",
+			"customInstructions": "自定义指令",
+			"customInstructionsDesc": "这些指令会被添加到每个请求的系统提示末尾。",
+			"planActSeparateModels": "为规划和执行模式设置不同的模型",
+			"planActSeparateModelsDesc": "在规划和执行模式之间切换时，将保留之前模式使用的API和模型。这可能很有用，例如使用强大的推理模型来制定计划，然后让更便宜的编码模型来执行。",
+			"advancedSettings": "高级设置",
+			"debug": "调试",
+			"resetState": "重置状态",
+			"resetStateDesc": "这将重置扩展中的所有全局状态和密钥存储。"
+		},
+		"feedback": {
+			"text": "如果您有任何问题或反馈，请随时在以下地址提交issues",
+			"version": "版本 {{version}}"
+		},
+		"tabs": {
+			"apiConfig": {
+				"name": "API配置",
+				"tooltip": "API配置",
+				"header": "API配置"
+			},
+			"general": {
+				"name": "通用",
+				"tooltip": "通用设置",
+				"header": "通用设置"
+			},
+			"features": {
+				"name": "功能",
+				"tooltip": "功能设置",
+				"header": "功能设置"
+			},
+			"browser": {
+				"name": "浏览器",
+				"tooltip": "浏览器设置",
+				"header": "浏览器设置"
+			},
+			"terminal": {
+				"name": "终端",
+				"tooltip": "终端设置",
+				"header": "终端设置"
+			},
+			"debug": {
+				"name": "调试",
+				"tooltip": "调试工具",
+				"header": "调试"
+			},
+			"about": {
+				"name": "关于",
+				"tooltip": "关于Codee",
+				"header": "关于"
+			}
+		},
+		"planMode": "规划模式",
+		"actMode": "执行模式",
+		"api": {
+			"provider": "API 提供商",
+			"selectModel": "选择模型...",
+			"model": "模型",
+			"baseUrl": "服务器URL",
+			"apiKey": "API密钥",
+			"modelId": "模型ID",
+			"customBaseUrl": "使用自定义服务器URL",
+			"customVpcEndpoint": "使用自定义VPC终端",
+			"crossRegionInference": "使用跨区域推理",
+			"promptCaching": "使用提示缓存",
+			"awsCredentials": "AWS凭证",
+			"awsProfile": "AWS配置文件",
+			"awsAccessKey": "AWS访问密钥",
+			"awsSecretKey": "AWS密钥",
+			"awsSessionToken": "AWS会话令牌",
+			"awsRegion": "AWS区域",
+			"selectRegion": "选择区域...",
+			"gcpProjectId": "Google Cloud项目ID",
+			"gcpRegion": "Google Cloud区域",
+			"modelConfig": "模型配置",
+			"supportsImages": "支持图片",
+			"supportsComputerUse": "支持计算机使用",
+			"enableR1Format": "启用R1消息格式",
+			"contextWindowSize": "上下文窗口大小",
+			"maxOutputTokens": "最大输出令牌数",
+			"inputPrice": "输入价格",
+			"outputPrice": "输出价格",
+			"temperature": "温度",
+			"sortProviderRouting": "排序底层提供商路由",
+			"default": "默认",
+			"price": "价格",
+			"throughput": "吞吐量",
+			"latency": "延迟",
+			"reasoningEffort": "修改推理力度",
+			"low": "低",
+			"high": "高",
+			"complexPrompts": "Codee使用的是复杂提示词，Claude或deepseek-v3模型最适合。性能较差的模型可能无法按预期工作。"
+		}
+	},
+	"chat": {
+		"addContext": "添加上下文",
+		"addImages": "添加图片",
+		"planMode": "规划模式",
+		"actMode": "执行模式",
+		"planModeTooltip": "在规划模式下，Codee 将收集信息来制定计划",
+		"actModeTooltip": "在执行模式下，Codee 将立即完成任务",
+		"toggleModeHint": "使用 {{metaKey}}+Shift+A 切换模式",
+		"send": "发送",
+		"placeholder": "输入消息...",
+		"welcome": {
+			"title": "你好，我是 Codee(扣迪)",
+			"description": "你需要给我提供一份详细的软件开发需求描述，我可以将需求拆分成多个步骤来执行。我可以查看文件，修改文件，写文件，执行命令等。我甚至可以使用 MCP 创建新工具并扩展自己的能力。",
+			"claudeLink": "Claude 3.7 Sonnet",
+			"claudeLinkText": "Claude 3.7 Sonnet",
+			"signupText": "注册账号免费开始使用，或者使用提供访问 Claude 3.7 Sonnet 等模型的 API 密钥。",
+			"getStarted": "免费开始使用",
+			"useOwnApiKey": "使用您自己的 API 密钥",
+			"letsGo": "开始使用！"
+		}
+	},
+	"autoApprove": {
+		"title": "自动批准",
+		"none": "无",
+		"description": "自动批准允许 Codee 在不需要请求许可的情况下执行以下操作。请谨慎使用，仅在了解风险的情况下启用。",
+		"maxRequests": "最大请求数：",
+		"maxRequestsDesc": "Codee 将在请求继续执行任务之前自动执行这么多 API 请求。",
+		"enableNotifications": "启用通知",
+		"notificationsDesc": "当 Codee 需要批准继续执行或任务完成时接收系统通知。",
+		"actions": {
+			"enableAutoApprove": {
+				"label": "开启自动批准",
+				"shortName": "自动批准",
+				"description": "打开或关闭自动批准功能。"
+			},
+			"readFiles": {
+				"label": "读取项目文件",
+				"shortName": "读取本地",
+				"description": "允许 Codee 读取工作区内的文件。"
+			},
+			"readFilesExternally": {
+				"label": "读取所有文件",
+				"shortName": "读取（全部）",
+				"description": "允许 Codee 读取计算机上的任何文件。"
+			},
+			"editFiles": {
+				"label": "编辑项目文件",
+				"shortName": "编辑",
+				"description": "允许 Codee 修改工作区内的文件。"
+			},
+			"editFilesExternally": {
+				"label": "编辑所有文件",
+				"shortName": "编辑（全部）",
+				"description": "允许 Codee 修改计算机上的任何文件。"
+			},
+			"executeSafeCommands": {
+				"label": "执行安全命令",
+				"shortName": "安全命令",
+				"description": "允许 Codee 执行安全的终端命令。如果模型确定命令可能具有破坏性，仍需要批准。"
+			},
+			"executeAllCommands": {
+				"label": "执行所有命令",
+				"shortName": "所有命令",
+				"description": "允许 Codee 执行所有终端命令。使用风险自负。"
+			},
+			"useBrowser": {
+				"label": "使用浏览器",
+				"shortName": "浏览器",
+				"description": "允许 Codee 在浏览器中启动和与任何网站交互。"
+			},
+			"useMcp": {
+				"label": "使用 MCP 服务器",
+				"shortName": "MCP",
+				"description": "允许 Codee 使用可能修改文件系统或与 API 交互的已配置 MCP 服务器。"
+			},
+			"enableAll": {
+				"label": "启用全部",
+				"shortName": "全部",
+				"description": "启用所有操作。"
+			},
+			"enableNotifications": {
+				"label": "启用通知",
+				"shortName": "通知",
+				"description": "当 Codee 需要批准继续执行或任务完成时接收系统通知。"
+			}
+		}
+	},
+	"mcp": {
+		"tabs": {
+			"marketplace": "MCP市场",
+			"addRemote": "添加远程MCP",
+			"installed": "已安装的MCP"
+		},
+		"addServer": {
+			"title": "通过提供名称和URL端点添加远程MCP服务器。了解更多",
+			"serverName": "服务器名称",
+			"serverNamePlaceholder": "mcp-server",
+			"serverUrl": "服务器URL",
+			"serverUrlPlaceholder": "https://example.com/mcp-server",
+			"addButton": "添加MCP服务",
+			"addingButton": "添加中...",
+			"connectingMessage": "正在连接到服务器...这可能需要几秒钟。",
+			"editConfig": "编辑配置",
+			"errors": {
+				"nameRequired": "服务器名称是必需的",
+				"urlRequired": "服务器URL是必需的",
+				"invalidUrl": "URL格式无效",
+				"failedToAdd": "添加服务器失败"
+			}
+		},
+		"installed": {
+			"description": "模型上下文协议",
+			"modelContextProtocol": "模型上下文协议",
+			"communityMadeServers": "社区创建的服务器",
+			"seeDemo": "查看演示",
+			"configureServers": "配置 MCP 服务器",
+			"advancedSettings": "MCP 高级设置",
+			"nomcpServers": "未安装 MCP 服务器",
+			"useCommunityMadeServers": "允许与本地运行的 MCP 服务器交互，这些服务器提供额外的工具和资源来扩展 Codee 的功能。",
+			"createNewMcpServer": "或者您可以要求 Codee 为您的工作流程创建新工具（例如，\"添加一个工具来获取最新的 npm 文档\"）。"
+		},
+		"configuration": {
+			"title": "MCP 服务器",
+			"done": "完成"
+		}
+	},
+	"account": {
+		"title": "账户",
+		"done": "完成",
+		"underConstruction": "功能建设中..."
+	},
+	"CodeeRules": {
+		"manageRules": "管理 Codee 规则和工作流",
+		"CodeeRules": "Codee 规则",
+		"CodeeWorkflows": "Codee 工作流",
+		"workspaceWorkflows": "工作区流程",
+		"globalWorkflows": "全局工作流",
+		"globalRules": "全局规则",
+		"workspaceRules": "工作区规则",
+		"noRulesFound": "未找到规则",
+		"editRuleFile": "编辑规则文件",
+		"deleteRuleFile": "删除规则文件",
+		"newRuleFile": "新建规则文件...",
+		"createRuleFile": "创建规则文件",
+		"newRuleFileButton": "新建规则文件",
+		"ruleNamePlaceholder": "规则名称 (.md, .txt, 或无扩展名)",
+		"invalidExtension": "只允许 .md, .txt 或无文件扩展名",
+		"ruleDescription": "规则允许您为Codee提供系统级的指导。您可以将它们视为一种持久的方式，用于为您的项目或所有对话全局性地添加上下文和偏好设置。",
+		"createWorkflowFile": "创建工作流文件",
+		"newWorkflowFile": "新建工作流文件...",
+		"workflowNamePlaceholder": "工作流名称 (.md, .txt, 或无扩展名)",
+		"noWorkflowsFound": "未找到工作流文件",
+		"workflowsDescription": "工作流允许您定义一系列步骤来指导Codee完成一组重复的任务，例如部署服务或提交PR。要调用工作流，请在聊天中键入 /workflow-name。"
+	}
+}

@@ -1,0 +1,38 @@
+{
+	"compilerOptions": {
+		"esModuleInterop": true,
+		"experimentalDecorators": true,
+		"forceConsistentCasingInFileNames": true,
+		"isolatedModules": true,
+		"lib": ["es2022", "esnext.disposable", "DOM"],
+		"module": "esnext",
+		"moduleResolution": "Bundler",
+		"noFallthroughCasesInSwitch": true,
+		"noImplicitOverride": true,
+		"noImplicitReturns": true,
+		"noUnusedLocals": false,
+		"resolveJsonModule": true,
+		"rootDir": ".",
+		"skipLibCheck": true,
+		"sourceMap": true,
+		"strict": true,
+		"target": "es2022",
+		"useDefineForClassFields": true,
+		"useUnknownInCatchVariables": false,
+		"baseUrl": ".",
+		"paths": {
+			"@/*": ["src/*"],
+			"@api/*": ["src/api/*"],
+			"@core/*": ["src/core/*"],
+			"@integrations/*": ["src/integrations/*"],
+			"@services/*": ["src/services/*"],
+			"@shared/*": ["src/shared/*"],
+			"@utils/*": ["src/utils/*"],
+			"@packages/*": ["src/packages/*"],
+			"@anthropic-ai/sdk": ["./node_modules/@anthropic-ai/sdk"],
+			"openai/*": ["./node_modules/openai/*"]
+		}
+	},
+	"include": ["src/**/*", "scripts/**/*"],
+	"exclude": ["node_modules", ".vscode-test", "webview-ui", "continue_core"]
+}
