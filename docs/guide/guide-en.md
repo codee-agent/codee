@@ -7,7 +7,7 @@
     - Open the VS Code extensions marketplace, search for "codee", then click "Install"
     
      <p>
-      <image src="../../assets/icons/1.png" width="60%"></image>
+      <image src="https://github.com/user-attachments/assets/118406b6-5cc7-4f2d-84a0-022fef53106c" width="60%"></image>
      </p>
     
   - Or manually install from [Github](https://github.com/codee-agent/codee/releases) Releases:
@@ -16,7 +16,7 @@
     - Select the downloaded codee-me-xxxx.vsix file
     
       <p>
-        <image src="../../assets/icons/13.png" width="60%"></image>
+        <image src="https://github.com/user-attachments/assets/520fa113-1e2a-4cf3-b21e-df7bdc059930" width="60%"></image>
       </p>
 
 #### 2. Configure the Chat Model
@@ -28,7 +28,7 @@
   - For "OpenAI Compatible", you also need to enter server URL and manually input model ID
   
     <p>
-      <image src="../../assets/icons/2.png" width="60%"></image>
+      <image src="https://github.com/user-attachments/assets/7e68fa4c-cee1-4606-bef6-be08b4f075fc" width="60%"></image>
     </p>
 
 #### 3. Configure Code AutoComplete Model
@@ -39,7 +39,7 @@
   - Need to manually enter base URL, API key and model ID (see [AI Model Server Configuration Guide](https://github.com/codee-agent/codee/blob/main/docs/guide/config.md))
 
   <p>
-    <image src="../../assets/icons/3.png" width="60%"></image>
+    <image src="https://github.com/user-attachments/assets/d395d87d-e237-4fe8-bc0b-fdb207b8a2b7" width="60%"></image>
   </p>
 
 #### 4. Set Plugin Language
@@ -48,7 +48,7 @@
 - Under "Language Settings", select from 12 supported languages
 
   <p>
-    <image src="../../assets/icons/4.png" width="60%"></image>
+    <image src="https://github.com/user-attachments/assets/86928e2d-488f-4cfc-b1d6-a834d3f9fe46" width="60%"></image>
   </p>
 
 #### 5. Set Plugin Display Position
@@ -58,7 +58,7 @@
 - Right-click Codee icon and select "Move to" → "Secondary side bar" to move to right sidebar (requires VS Code restart)
 
   <p>
-    <image src="../../assets/icons/5.png" width="60%"></image>
+    <image src="https://github.com/user-attachments/assets/a7c68ea3-bd97-4685-85ad-5309ad9f562a" width="60%"></image>
   </p>
 
 #### 6. Start Chat Coding
@@ -68,7 +68,7 @@
 - In Act Mode, enter prompt like: "Please use HTML5 to create a Tetris game. Requirements: Beautiful UI, complete functionality, single-player." Press enter to generate and save code.
 
   <p>
-    <image src="../../assets/icons/6.png" width="60%"></image>
+    <image src="https://github.com/user-attachments/assets/1591966a-eedc-42d6-9a07-95dac6bbce7b" width="60%"></image>
   </p>
 
 #### 7. Start Code AutoComplete
@@ -78,7 +78,7 @@
 - Gray text shows suggestions - press Tab to accept or ignore
 
   <p>
-    <image src="../../assets/icons/7.png" width="60%"></image>
+    <image src="https://github.com/user-attachments/assets/feabeea0-ff9c-4e3d-ba8a-df0ac9a9fdec" width="60%"></image>
   </p>
 
 #### 8. Edit Features
@@ -87,13 +87,13 @@
 - Selected code appears in chat - you can add requests like "Please optimize this code with these requirements..."
 
   <p>
-    <image src="../../assets/icons/8.png" width="60%"></image>
+    <image src="https://github.com/user-attachments/assets/6db9ebec-dc50-4ed3-b7ad-2cf8bfd9cc80" width="60%"></image>
   </p>
 
 - For code errors (wavy underline), use Quick Fix → "Fix to Codee" or "Add to Codee"
 
   <p>
-    <image src="../../assets/icons/12.png" width="60%"></image>
+    <image src="https://github.com/user-attachments/assets/4949f19b-12c4-4f3f-8c0b-a560663f41ab" width="60%"></image>
   </p>
 
 #### 9. Using Codee with Other Editors
@@ -111,7 +111,7 @@
 - Recommended to enable "Read files" auto-approval
 
   <p>
-    <image src="../../assets/icons/9.png" width="60%"></image>
+    <image src="https://github.com/user-attachments/assets/21c3c404-de2e-4144-a62b-e6f3554a65fc" width="60%"></image>
   </p>
 
 #### 11. Configure Ignore Files and Rule Files
@@ -123,7 +123,7 @@
   - Create new rule files (e.g. flutter.md) with your coding rules
 
   <p>
-    <image src="../../assets/icons/10.png" width="60%"></image>
+    <image src="https://github.com/user-attachments/assets/f681c5d3-2864-451e-83bb-57c85ac91d98" width="60%"></image>
   </p>
 
 #### 12. Using MCP
@@ -136,6 +136,6 @@
 - Disable unused MCP services to save tokens
 
 <p>
-  <image src="../../assets/icons/11.png" width="60%"></image>
+  <image src="https://github.com/user-attachments/assets/22edc622-e899-4e1a-835f-9f60fc98b9c7" width="60%"></image>
 </p>
 
