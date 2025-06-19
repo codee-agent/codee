@@ -7,7 +7,7 @@
     - 点开VS code的应用商店界面，在搜索框中搜索“codee”，点击“Install”安装即可
     
       <p>
-        <image src="../../assets/icons/1.png" width="60%"></image>
+        <image src="https://github.com/user-attachments/assets/118406b6-5cc7-4f2d-84a0-022fef53106c" width="60%"></image>
       </p>
     
   - 或者从[Github](https://code.y5ops.com/coders/codee)的Releases中下载codee-xxxx.vsix后手动安装
@@ -17,7 +17,7 @@
     - 弹出选择文件夹，选择刚下载的codee-xxxx.vsix，确定即可
     
       <p>
-        <image src="../../assets/icons/13.png" width="60%"></image>
+        <image src="https://github.com/user-attachments/assets/520fa113-1e2a-4cf3-b21e-df7bdc059930" width="60%"></image>
       </p>
 
 #### 2.配置聊天编码的模型
@@ -28,7 +28,7 @@
   - 如果选择的是OpenAI Compatible，还需要输入服务器的URL，以及手动填写模型ID信息。
   
     <p>
-      <image src="../../assets/icons/2.png" width="60%"></image>
+      <image src="https://github.com/user-attachments/assets/7e68fa4c-cee1-4606-bef6-be08b4f075fc" width="60%"></image>
     </p>
 
 
@@ -39,7 +39,7 @@
 - 目前只实现了openai compatible协议的连接，需要自己填入baseurl,apikey和modelID，具体可以参考[大模型服务器配置方法](https://github.com/codee-agent/codee/blob/main/docs/guide/config.md)
 
   <p>
-    <image src="../../assets/icons/3.png" width="60%"></image>
+    <image src="https://github.com/user-attachments/assets/d395d87d-e237-4fe8-bc0b-fdb207b8a2b7" width="60%"></image>
   </p>
 
 #### 4.设置插件语言
@@ -49,7 +49,7 @@
 - 设置页面里有一个“语言设置”选项，下拉选择支持12种国际语言设置
 
   <p>
-    <image src="../../assets/icons/4.png" width="60%"></image>
+    <image src="https://github.com/user-attachments/assets/86928e2d-488f-4cfc-b1d6-a834d3f9fe46" width="60%"></image>
   </p>
 
 #### 5.设置插件展示位置
@@ -61,7 +61,7 @@
 - 也可以在codee图标上右键选择：“move to”->"Secondary side bar",将codee展示到右边侧栏区域，**需要重启VS code生效！！！**
 
   <p>
-    <image src="../../assets/icons/5.png" width="60%"></image>
+    <image src="https://github.com/user-attachments/assets/a7c68ea3-bd97-4685-85ad-5309ad9f562a" width="60%"></image>
   </p>
 
 #### 6.开始对话编码
@@ -73,7 +73,7 @@
 - 在执行模式下，输入框中输入描述词，比如：“请使用H5帮我写一个俄罗斯方块的小游戏。要求：UI美观，功能完整，单人单机。”，点发送按钮，或者按回车键，代码就会被生出来并保存到工作空间中。
 
   <p>
-    <image src="../../assets/icons/6.png" width="60%"></image>
+    <image src="https://github.com/user-attachments/assets/1591966a-eedc-42d6-9a07-95dac6bbce7b" width="60%"></image>
   </p>
 
 #### 7.开始代码补全
@@ -83,7 +83,7 @@
 - 在需要编写代码的地方，首次激活代码补全需要一个回车键，后面就会开始自动跟随鼠标进行代码补全，补全的代码会显示成灰色，如果需要使用补全的代码，就按Tab键接受，否则不用理会。
 
   <p>
-    <image src="../../assets/icons/7.png" width="60%"></image>
+    <image src="https://github.com/user-attachments/assets/feabeea0-ff9c-4e3d-ba8a-df0ac9a9fdec" width="60%"></image>
   </p>
 
 #### 8.选择编辑功能
@@ -91,13 +91,13 @@
 - 在代码编辑区域，选择一段代码，点击右键，选择“Add to Codee”；或者在下方的命令行中选择输出内容，右键选择“Add to Codee” ，这时候在聊天输入框中就能看见选择的代码信息，也可以在信息后面继续加上自己的要求，比如：请帮忙优化这几行，要求如下...
 
   <p>
-    <image src="../../assets/icons/8.png" width="60%"></image>
+    <image src="https://github.com/user-attachments/assets/6db9ebec-dc50-4ed3-b7ad-2cf8bfd9cc80" width="60%"></image>
   </p>
 
 - 如果在代码编辑区中，有波浪线提示代码错误的地方，可以选择 Quick fix，然后选择Fix to Codee或者 Add to Codee，快速去解决错误问题
 
   <p>
-    <image src="../../assets/icons/12.png" width="60%"></image>
+    <image src="https://github.com/user-attachments/assets/4949f19b-12c4-4f3f-8c0b-a560663f41ab" width="60%"></image>
   </p>
 
 #### 9.如果让codee配合其它编辑器工作
@@ -121,7 +121,7 @@
 - 建议自动授权把“读取文件”勾选上。
 
   <p>
-    <image src="../../assets/icons/9.png" width="60%"></image>
+    <image src="https://github.com/user-attachments/assets/21c3c404-de2e-4144-a62b-e6f3554a65fc" width="60%"></image>
   </p>
 
 #### 11.配置忽略文件和规则文件
@@ -134,7 +134,7 @@
   - 全局规则配置也是一样的添加和管理。
 
   <p>
-    <image src="../../assets/icons/10.png" width="60%"></image>
+    <image src="https://github.com/user-attachments/assets/f681c5d3-2864-451e-83bb-57c85ac91d98" width="60%"></image>
   </p>
 
 #### 12.MCP的使用
@@ -145,6 +145,6 @@
 - 如果明确知道自己不需要使用到MCP，一定要在MCP服务列表中点击开关按钮件MCP关闭掉，这样能节约大量的token
 
 <p>
-  <image src="../../assets/icons/11.png" width="60%"></image>
+  <image src="https://github.com/user-attachments/assets/22edc622-e899-4e1a-835f-9f60fc98b9c7" width="60%"></image>
 </p>
 
