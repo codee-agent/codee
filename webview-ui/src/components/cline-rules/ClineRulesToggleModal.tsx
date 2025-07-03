@@ -232,13 +232,9 @@ const ClineRulesToggleModal: React.FC = () => {
 					{/* Description text */}
 					<div className="text-xs text-[var(--vscode-descriptionForeground)] mb-4">
 						{currentView === "rules" ? (
-							<p>
-								{t("CodeeRules.ruleDescription")}
-							</p>
+							<p>{t("CodeeRules.ruleDescription")}</p>
 						) : (
-							<p>
-								{t("CodeeRules.workflowsDescription")}
-							</p>
+							<p>{t("CodeeRules.workflowsDescription")}</p>
 						)}
 					</div>
 

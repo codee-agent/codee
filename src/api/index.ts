@@ -25,6 +25,15 @@ import { AskSageHandler } from "./providers/asksage"
 import { XAIHandler } from "./providers/xai"
 import { SambanovaHandler } from "./providers/sambanova"
 
+import {
+	//huqb
+	VALUE_API_PROVIDER,
+	VALUE_OPENAI_BASE_URL,
+	VALUE_OPENAI_API_KEY,
+	VALUE_OPENAI_MODEL_ID,
+	VALUE_AUTOCOMPLETE_MODEL_ID,
+} from "../../webview-ui/src/values"
+import { EncryptUtil } from "../utils/encrypt"
 
 export interface ApiHandler {
 	createMessage(systemPrompt: string, messages: Anthropic.Messages.MessageParam[]): ApiStream
@@ -48,6 +57,20 @@ export function buildApiHandler(configuration: ApiConfiguration): ApiHandler {
 		case "vertex":
 			return new VertexHandler(options)
 		case "openai":
+			//console.log("@@@done openai:", options) //huqb
+			// options.openAiBaseUrl = options.openAiBaseUrl ?? VALUE_OPENAI_BASE_URL
+			// options.openAiApiKey = options.openAiApiKey ?? VALUE_OPENAI_API_KEY
+			// options.openAiModelId = options.openAiModelId ?? VALUE_OPENAI_MODEL_ID
+			// //将apikey共享给autocomplete://huqb
+			// const apiBase = options.openAiBaseUrl //EncryptUtil.aesEncrypt(options.openAiBaseUrl)
+			// const model = VALUE_AUTOCOMPLETE_MODEL_ID
+			// const apiKey = options.openAiApiKey //EncryptUtil.aesEncrypt(options.openAiApiKey)
+			// const { updateAutocompleteConfig } = require("@continuedev/core/util/codaiConfigUtil")
+			// updateAutocompleteConfig({
+			// 	apiBase,
+			// 	model,
+			// 	apiKey,
+			// })
 			return new OpenAiHandler(options)
 		case "ollama":
 			return new OllamaHandler(options)

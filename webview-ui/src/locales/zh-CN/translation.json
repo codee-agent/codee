@@ -195,6 +195,16 @@
 			}
 		}
 	},
+	"advanced": {
+		"title": "高级能力",
+		"memorybank": {
+			"title": "记忆体",
+			"init": "初始化",
+			"update": "更新记忆",
+			"remember": "唤醒记忆",
+			"description": "记忆体是一个结构化的文档系统，能记住你项目的所有细节，并且能够跨会话维护上下文，从而让Codee从一个无状态的助手转变为一个长期的开发伙伴。"
+		}
+	},
 	"mcp": {
 		"tabs": {
 			"marketplace": "MCP市场",

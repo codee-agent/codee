@@ -52,9 +52,9 @@ const WelcomeView = memo(() => {
 					/>
 				</p>
 
-				{/* <p className="text-[var(--vscode-descriptionForeground)]">{t("chat.welcome.signupText")}</p>
+				{/*<p className="text-[var(--vscode-descriptionForeground)]">{t("chat.welcome.signupText")}</p>
 
-				<VSCodeButton appearance="primary" onClick={handleLogin} className="w-full mt-1">
+				 <VSCodeButton appearance="primary" onClick={handleLogin} className="w-full mt-1">
 					{t('chat.welcome.getStarted')}
 				</VSCodeButton> */}
 

@@ -192,6 +192,19 @@ const ApiOptions = ({
 	}
 
 	const { selectedProvider, selectedModelId, selectedModelInfo } = useMemo(() => {
+		//huqb
+		//初始化一个openai的配置
+		// if (apiConfiguration?.apiProvider == "openai" && !apiConfiguration.openAiBaseUrl) {
+		// 	setApiConfiguration({
+		// 		...apiConfiguration,
+		// 		apiProvider: VALUE_API_PROVIDER,
+		// 		openAiBaseUrl: VALUE_OPENAI_BASE_URL,
+		// 		openAiApiKey: VALUE_OPENAI_API_KEY,
+		// 		openAiModelId: VALUE_OPENAI_MODEL_ID,
+		// 	})
+		// 	console.log("@@@setApiConfiguration,1")
+		// }
+
 		return normalizeApiConfiguration(apiConfiguration)
 	}, [apiConfiguration])
 
@@ -324,7 +337,7 @@ const ApiOptions = ({
 						position: "relative",
 					}}>
 					<VSCodeOption value="openai">OpenAI Compatible</VSCodeOption>
-					{/* <VSCodeOption value="cline">Cline</VSCodeOption>
+					<VSCodeOption value="cline">Cline</VSCodeOption>
 					<VSCodeOption value="openrouter">OpenRouter</VSCodeOption>
 					<VSCodeOption value="anthropic">Anthropic</VSCodeOption>
 					<VSCodeOption value="bedrock">Amazon Bedrock</VSCodeOption>
@@ -346,7 +359,7 @@ const ApiOptions = ({
 					<VSCodeOption value="nebius">Nebius AI Studio</VSCodeOption>
 					<VSCodeOption value="asksage">AskSage</VSCodeOption>
 					<VSCodeOption value="xai">xAI</VSCodeOption>
-					<VSCodeOption value="sambanova">SambaNova</VSCodeOption> */}
+					<VSCodeOption value="sambanova">SambaNova</VSCodeOption>
 				</VSCodeDropdown>
 			</DropdownContainer>
 

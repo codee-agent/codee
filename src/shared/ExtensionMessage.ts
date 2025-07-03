@@ -45,6 +45,12 @@ export interface ExtensionMessage {
 		| "grpc_response" // New type for gRPC responses
 		| "autocompleteConfig"
 		| "languageConfig"
+		// wangyuan
+		| "enhancePrompt"
+		| "enhancedPromptResult"
+		| "memoryBankResult"
+		| "advancedConfig"
+		| "hasMemoryBank"
 	text?: string
 	action?:
 		| "chatButtonClicked"
@@ -108,6 +114,8 @@ export interface ExtensionMessage {
 	}
 	autocompleteConfig?: Partial<CodeeConfig>
 	language?: string
+	advancedConfig?: Partial<CodeeConfig>
+	hasMemoryBank?: boolean
 }
 
 export type Invoke = "sendMessage" | "primaryButtonClick" | "secondaryButtonClick"

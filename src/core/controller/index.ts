@@ -37,6 +37,8 @@ import {
 	ensureSettingsDirectoryExists,
 	GlobalFileNames,
 	ensureWorkflowsDirectoryExists,
+	hasMemoryBank,
+	createMemorybankDir,
 } from "../storage/disk"
 import {
 	getAllExtensionState,
@@ -62,8 +64,14 @@ import {
 	updateAutocompleteConfig,
 	getLanguageConfig,
 	updateLanguageConfig,
+	getAdvancedConfig,
+	updateAdvancedConfig,
 } from "@continuedev/core/util/codaiConfigUtil"
 import { AesUtil } from "@continuedev/core/util/AesUtil"
+//wy
+import { enhancePrompt } from "../../services/enhance_prompts"
+import { MEMORY_BANK_INSTRUCTIONS } from "../prompts/system"
+import { getWorkspacePath } from "@utils/path"
 
 /*
 https://github.com/microsoft/vscode-webview-ui-toolkit-samples/blob/main/default/weather-webview/src/providers/WeatherViewProvider.ts
@@ -553,6 +561,70 @@ export class Controller {
 						language: message.language,
 					})
 				}
+				break
+
+			// wangyuan
+			case "enhancePrompt":
+				if (!message.text) {
+					console.error("No text provided for enhancement")
+					return
+				}
+				try {
+					const enhancedText = await enhancePrompt(message.text, this.context)
+					await this.postMessageToWebview({
+						type: "enhancedPromptResult",
+						text: enhancedText,
+					})
+				} catch (error) {
+					console.error("Error enhancing prompt:", error)
+					await this.postMessageToWebview({
+						type: "enhancedPromptResult",
+						text: message.text,
+					})
+				}
+				break
+			case "getAdvancedConfig":
+				const advancedConfig = getAdvancedConfig()
+				this.postMessage({
+					type: "advancedConfig",
+					advancedConfig: {
+						advanced: {
+							memorybank: advancedConfig.memorybank,
+						},
+					},
+				})
+				break
+			case "getMemoryBank":
+				this.postMessageToWebview({ type: "hasMemoryBank", hasMemoryBank: await hasMemoryBank() })
+				break
+			case "memoryBank":
+				const workspacePath = getWorkspacePath()
+				if (!workspacePath) {
+					vscode.window.showErrorMessage("No workspace detected, Please open Codee in a workspace")
+					return
+				}
+				const action = await hasMemoryBank()
+				let text = message.text
+				console.log("@@@ rcv:", text, action, workspacePath)
+				// create dir when memory-bank not exists
+				if (text !== "remember") {
+					text = "update"
+				}
+				if (!action) {
+					await createMemorybankDir(workspacePath)
+					text = "init"
+				}
+				const { customInstructions } = await getAllExtensionState(this.context)
+				if (!customInstructions?.includes(MEMORY_BANK_INSTRUCTIONS)) {
+					await this.updateCustomInstructions(
+						customInstructions ? customInstructions + "\n\n" + MEMORY_BANK_INSTRUCTIONS : MEMORY_BANK_INSTRUCTIONS,
+					)
+					// after settings are updated, post state to webview
+					await this.postStateToWebview()
+					await this.postMessageToWebview({ type: "didUpdateSettings" })
+				}
+				console.log("@@@ post:", text)
+				this.postMessageToWebview({ type: "memoryBankResult", text })
 				break
 			// Add more switch case statements here as more webview message commands
 			// are created within the webview context (i.e. inside media/main.js)

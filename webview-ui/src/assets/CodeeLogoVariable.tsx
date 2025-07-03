@@ -11,11 +11,13 @@ import { SVGProps } from "react"
  * @returns {JSX.Element} SVG Codee logo that adapts to VS Code themes
  */
 const ClineLogoVariable = (props: SVGProps<SVGSVGElement>): JSX.Element => (
-	<svg 
-		xmlns="http://www.w3.org/2000/svg"
-		xmlnsXlink="http://www.w3.org/1999/xlink"
-		width="64px" height="64px">
-		<image  x="0px" y="0px" width="64px" height="64px"  xlinkHref="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAQAAAAAYLlVAAAAIGNIUk0AAHomAACAhAAA+gAAAIDo
+	<svg xmlns="http://www.w3.org/2000/svg" xmlnsXlink="http://www.w3.org/1999/xlink" width="64px" height="64px">
+		<image
+			x="0px"
+			y="0px"
+			width="64px"
+			height="64px"
+			xlinkHref="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAQAAAAAYLlVAAAAIGNIUk0AAHomAACAhAAA+gAAAIDo
 AAB1MAAA6mAAADqYAAAXcJy6UTwAAAACYktHRAD/h4/MvwAAAAlwSFlzAAAcIAAAHCABzQ+bngAA
 AAd0SU1FB+kGBQMRAWOZSKcAAAJuelRYdFJhdyBwcm9maWxlIHR5cGUgeG1wAABIiZ1WW7akMAj8
 ZxWzhAQImOU4rf7dc+Zzlj9FtFvbRz9GTz9MCFUUhEh/f/7QL1w5s5LcvJPeOxs82WDF1TKneLab
@@ -65,7 +67,8 @@ c2hvcCAyNi43IChNYWNpbnRvc2gpK3Ng9QAAADp0RVh0eG1wTU06RGVyaXZlZEZyb20AeG1wLmRp
 ZDpDMDc3MDJGODMzQTkxMUYwQjNDQUI1Nzk1QTI5NEQ0MZzQSU8AAAA5dEVYdHhtcE1NOkRvY3Vt
 ZW50SUQAeG1wLmRpZDpDMDc3MDJGQTMzQTkxMUYwQjNDQUI1Nzk1QTI5NEQ0Mc2vq2UAAAA5dEVY
 dHhtcE1NOkluc3RhbmNlSUQAeG1wLmlpZDpDMDc3MDJGOTMzQTkxMUYwQjNDQUI1Nzk1QTI5NEQ0
-MQ+iCiwAAAAASUVORK5CYII=" />
+MQ+iCiwAAAAASUVORK5CYII="
+		/>
 	</svg>
 )
 export default ClineLogoVariable

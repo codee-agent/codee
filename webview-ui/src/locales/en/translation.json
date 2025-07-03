@@ -195,6 +195,16 @@
 			}
 		}
 	},
+	"advanced": {
+		"title": "Advanced-abilities",
+		"memorybank": {
+			"title": "Memory bank",
+			"init": "Initialize",
+			"update": "Update",
+			"remember": "Remember",
+			"description": "The Memory Bank is a structured documentation system that allows Codee to maintain context across sessions. It transforms Codee from a stateless assistant into a persistent development partner that can effectively \"remember\" your project details over time."
+		}
+	},
 	"mcp": {
 		"tabs": {
 			"marketplace": "Marketplace",

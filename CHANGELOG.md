@@ -1,43 +1,45 @@
 # Changelog
+### [1.3.3]
+- 添加了记忆体功能；支持了固定任务的workflow；支持了多种文档格式的解析；优化了“描述词优化”的功能
 
 ### [1.3.2]
-- Added support for internationalization in Chinese and English interfaces; Updated the LOGO icon; Updated related ReadMe documentation; Added / commands; Added LaTeX rendering support; Implemented workflow for fixed tasks;
+- 支持中英文界面国际化；更新了LOGO图标；更新ReadMe相关文档；添加了/命令；支持LaTex渲染；
 
 ### [1.3.1]
-- Added functionality for custom rules files for different scenarios; Optimized remote MCP connection logic; Fixed several known issues;
+- 针对不同的场景，添加了自定义rules文件的功能；优化了远程MCP的连接逻辑；修复了部分已知的问题；
 
 ### [1.3.0]
-- Added context-aware code completion functionality and configuration; Initial support for PDF format parsing (<1MB); MCP now supports remote service calls (MCP extension execution needs to be performed in coding mode); Fixed several known bugs;
+- 添加了上下文感知的代码补全功能与配置；文件初步支持PDF格式解析（<1M）；MCP支持了远程服务调用，MCP扩展执行需要在编码模式下进行；修复若干已知BUG；
 
 ### [1.2.1]
-- Optimized the description optimization feature; Migrated part of the business to Suzhou GPU cluster;
+- 优化了描述词优化的功能；迁移部分业务到苏州GPU集群
 
 ### [1.2.0]
-- Further optimized description length; Added "Fix in Code" feature; Added ability to select code and modify it in chat; Added MCP extension capability in communication mode;
+- 进一步优化了描述词长度；增加了Fix in Codee的功能；增加了选择代码进入聊天进行修改的能力；增加了交流模式中扩展MCP的能力
 
 ### [1.1.6]
-- Enhanced code security and privacy; Adjusted the code completion model; Fixed known bugs;
+- 增加了代码的安全性和隐私性；调整了代码补全的模型；修复了已知的bug
 
 ### [1.1.5]
-- Optimized system descriptions; Optimized connection links; Improved Tab code completion functionality;
+- 优化了系统描述词；优化了连接链路；优化了Tab代码补全的功能
 
 ### [1.1.4]
-- Added support for full version of deepseek-v3; Limited file size for @ reading to <100KB; Added token verification for model access;
+- 支持了deepseek-v3满血版；限制了@读取文件的大小<100KB；模型获取增加了token验证
 
 ### [1.1.3]
-- Added prompt optimization feature; Added .clineignore file to filter certain files;
+- 添加了提示词优化功能，添加了.clineignore文件过滤部分文件的功能
 
 ### [1.1.2]
-- Added support for Deepseek-r1 model; Introduced "Communication" and "Coding" two working modes. Recommended to use deepseek-r1 model in communication mode and Qwen2.5 model in coding mode.
+- 添加了Deepseek-r1模型的支持，添加了“交流”和“编码”两种工作模式。建议在交流模式下去使用deepseek-r1模型，在编码模式下去使用Qwen2.5的模型。
 
 ### [1.1.1]
-- Added feature to select and edit code segments, shortcut keys: Windows: ctrl+shift+k, Mac: command+shift+k;
+- 添加了选择代码段编辑的功能, 快捷键: windows: ctrl+shift+k,  mac:command+shift+k
 
 ### [1.1.0]
-- Added Tab key completion feature, shortcut keys: Windows: ctrl+K+L, Mac: command+K+L;
+- 添加了Tab键补全的功能, 快捷键: windows: ctrl+K+L,  mac:command+K+L
 
 ### [1.0.2]
-- Added "diff edit" mode for quick editing capability;
+- 添加了通过“diff edit”模式进行快速编辑的能力
 
 ### [1.0.1]
-- First beta version of Codee, supporting natural language to code editing.
+- Codee的第一个测试版，支持自然语言到代码的编辑。

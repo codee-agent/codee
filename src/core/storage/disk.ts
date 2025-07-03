@@ -8,6 +8,8 @@ import { TaskMetadata } from "@core/context/context-tracking/ContextTrackerTypes
 import os from "os"
 import { execa } from "@packages/execa"
 
+import { getWorkspacePath } from "@utils/path"
+
 export const GlobalFileNames = {
 	apiConversationHistory: "api_conversation_history.json",
 	contextHistory: "context_history.json",
@@ -176,4 +178,20 @@ export async function saveTaskMetadata(context: vscode.ExtensionContext, taskId:
 	} catch (error) {
 		console.error("Failed to save task metadata:", error)
 	}
+}
+
+export async function hasMemoryBank(): Promise<boolean> {
+	try {
+		return (await fs.stat(path.join(getWorkspacePath(), "memory-bank"))).isDirectory()
+	} catch {
+		return false
+	}
+}
+
+//create memory bank dir
+export async function createMemorybankDir(workspacePath: string): Promise<string> {
+	//wy
+	const memorybankDir = path.join(workspacePath, "memory-bank")
+	await fs.mkdir(memorybankDir)
+	return memorybankDir
 }

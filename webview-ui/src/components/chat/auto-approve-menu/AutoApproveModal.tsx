@@ -163,9 +163,7 @@ const AutoApproveModal: React.FC<AutoApproveModalProps> = ({
 					onToggleFavorite={toggleFavorite}
 				/>
 
-				<HeroTooltip
-					content = {t("autoApprove.maxRequestsDesc")}
-					placement="top">
+				<HeroTooltip content={t("autoApprove.maxRequestsDesc")} placement="top">
 					<div className="flex items-center pl-1.5 my-2">
 						<span className="codicon codicon-settings text-[#CCCCCC] text-[14px]" />
 						<span className="text-[#CCCCCC] text-xs font-medium ml-2">{t("autoApprove.maxRequests")}</span>

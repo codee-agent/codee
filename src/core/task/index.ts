@@ -1587,7 +1587,7 @@ export class Task {
 		})
 
 		await this.migrateDisableBrowserToolSetting()
-		const disableBrowserTool = this.browserSettings.disableToolUse ?? false//huqb
+		const disableBrowserTool = this.browserSettings.disableToolUse ?? false //huqb
 		// Codee browser tool uses image recognition for navigation (requires model image support).
 		const modelSupportsBrowserUse = this.api.getModel().info.supportsImages ?? false
 
@@ -1611,7 +1611,7 @@ export class Task {
 
 		let settingsCustomInstructions = this.customInstructions?.trim()
 		await this.migratePreferredLanguageToolSetting()
-		const preferredLanguage = getLanguageKey(this.chatSettings.preferredLanguage as LanguageDisplay)//huqb
+		const preferredLanguage = getLanguageKey(this.chatSettings.preferredLanguage as LanguageDisplay) //huqb
 		const preferredLanguageInstructions =
 			preferredLanguage && preferredLanguage !== DEFAULT_LANGUAGE_SETTINGS
 				? `# Preferred Language\n\nSpeak in ${preferredLanguage}.`

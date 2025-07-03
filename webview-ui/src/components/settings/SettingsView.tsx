@@ -70,37 +70,37 @@ interface SettingsTab {
 export const SETTINGS_TABS: SettingsTab[] = [
 	{
 		id: "api-config",
-		name: ('settings.tabs.apiConfig.name'),
-		tooltipText: ('settings.tabs.apiConfig.tooltip'),
-		headerText: ('settings.tabs.apiConfig.header'),
+		name: "settings.tabs.apiConfig.name",
+		tooltipText: "settings.tabs.apiConfig.tooltip",
+		headerText: "settings.tabs.apiConfig.header",
 		icon: Webhook,
 	},
 	{
 		id: "general",
-		name: ('settings.tabs.general.name'),
-		tooltipText: ('settings.tabs.general.tooltip'),
-		headerText: ('settings.tabs.general.header'),
+		name: "settings.tabs.general.name",
+		tooltipText: "settings.tabs.general.tooltip",
+		headerText: "settings.tabs.general.header",
 		icon: Settings,
 	},
 	{
 		id: "features",
-		name: ('settings.tabs.features.name'),
-		tooltipText: ('settings.tabs.features.tooltip'),
-		headerText: ('settings.tabs.features.header'),
+		name: "settings.tabs.features.name",
+		tooltipText: "settings.tabs.features.tooltip",
+		headerText: "settings.tabs.features.header",
 		icon: CheckCheck,
 	},
 	{
 		id: "browser",
-		name: ('settings.tabs.browser.name'),
-		tooltipText: ('settings.tabs.browser.tooltip'),
-		headerText: ('settings.tabs.browser.header'),
+		name: "settings.tabs.browser.name",
+		tooltipText: "settings.tabs.browser.tooltip",
+		headerText: "settings.tabs.browser.header",
 		icon: SquareMousePointer,
 	},
 	{
 		id: "terminal",
-		name: ('settings.tabs.terminal.name'),
-		tooltipText: ('settings.tabs.terminal.tooltip'),
-		headerText: ('settings.tabs.terminal.header'),
+		name: "settings.tabs.terminal.name",
+		tooltipText: "settings.tabs.terminal.tooltip",
+		headerText: "settings.tabs.terminal.header",
 		icon: SquareTerminal,
 	},
 	// Only show in dev mode
@@ -108,18 +108,18 @@ export const SETTINGS_TABS: SettingsTab[] = [
 		? [
 				{
 					id: "debug",
-					name: ('settings.tabs.debug.name'),
-					tooltipText: ('settings.tabs.debug.tooltip'),
-					headerText: ('settings.tabs.debug.header'),
+					name: "settings.tabs.debug.name",
+					tooltipText: "settings.tabs.debug.tooltip",
+					headerText: "settings.tabs.debug.header",
 					icon: FlaskConical,
 				},
 			]
 		: []),
 	{
 		id: "about",
-		name: ('settings.tabs.about.name'),
-		tooltipText: ('settings.tabs.about.tooltip'),
-		headerText: ('settings.tabs.about.header'),
+		name: "settings.tabs.about.name",
+		tooltipText: "settings.tabs.about.tooltip",
+		headerText: "settings.tabs.about.header",
 		icon: Info,
 	},
 ]
@@ -207,7 +207,7 @@ const SettingsView = ({ onDone, targetSection }: SettingsViewProps) => {
 			type: "updateLanguageConfig",
 			language: newLanguage,
 		})
-		setHasUnsavedChanges(true)//huqb
+		setHasUnsavedChanges(true) //huqb
 	}
 
 	useEffect(() => {
@@ -582,7 +582,6 @@ const SettingsView = ({ onDone, targetSection }: SettingsViewProps) => {
 								<div>
 									{renderSectionHeader("api-config")}
 									<Section>
-										
 										{/* Tabs container */}
 										{planActSeparateModelsSetting ? (
 											<div className="rounded-md mb-5 bg-[var(--vscode-panel-background)]">
@@ -632,7 +631,7 @@ const SettingsView = ({ onDone, targetSection }: SettingsViewProps) => {
 												{t("settings.other.planActSeparateModelsDesc")}
 											</p>
 										</div>
-										
+
 										{/* Autocomplete Settings Section */}
 										<div className="border border-solid border-[var(--vscode-panel-border)] rounded-md p-[10px] mb-5 bg-[var(--vscode-panel-background)] [&_vscode-dropdown]:w-full [&_vscode-text-field]:w-full">
 											<details
@@ -642,7 +641,9 @@ const SettingsView = ({ onDone, targetSection }: SettingsViewProps) => {
 														vscode.postMessage({ type: "getAutocompleteConfig" })
 													}
 												}}>
-												<summary className="cursor-pointer font-medium">{t("settings.autocomplete.title")}</summary>
+												<summary className="cursor-pointer font-medium">
+													{t("settings.autocomplete.title")}
+												</summary>
 												<div className="mt-3 space-y-3">
 													<VSCodeDropdown>
 														<VSCodeOption value="openai">OpenAI Compatible</VSCodeOption>
@@ -652,7 +653,7 @@ const SettingsView = ({ onDone, targetSection }: SettingsViewProps) => {
 														value={autocompleteConfig.autocomplete.apiBase}
 														onInput={(e: any) => {
 															if (e.target.value !== autocompleteConfig.autocomplete.apiBase) {
-																setHasUnsavedChanges(true)//huqb
+																setHasUnsavedChanges(true) //huqb
 															}
 															setAutocompleteConfig({
 																...autocompleteConfig,
@@ -660,8 +661,7 @@ const SettingsView = ({ onDone, targetSection }: SettingsViewProps) => {
 																	...autocompleteConfig.autocomplete,
 																	apiBase: e.target.value,
 																},
-															});
-															
+															})
 														}}
 														placeholder={t("settings.autocomplete.apiBase")}>
 														{t("settings.autocomplete.apiBase")}
@@ -672,7 +672,7 @@ const SettingsView = ({ onDone, targetSection }: SettingsViewProps) => {
 														type="password"
 														onInput={(e: any) => {
 															if (e.target.value !== autocompleteConfig.autocomplete.apiKey) {
-																setHasUnsavedChanges(true)//huqb
+																setHasUnsavedChanges(true) //huqb
 															}
 															setAutocompleteConfig({
 																...autocompleteConfig,
@@ -680,7 +680,7 @@ const SettingsView = ({ onDone, targetSection }: SettingsViewProps) => {
 																	...autocompleteConfig.autocomplete,
 																	apiKey: e.target.value,
 																},
-															});
+															})
 														}}
 														placeholder={t("settings.autocomplete.apiKey")}>
 														{t("settings.autocomplete.apiKey")}
@@ -690,7 +690,7 @@ const SettingsView = ({ onDone, targetSection }: SettingsViewProps) => {
 														value={autocompleteConfig.autocomplete.model}
 														onInput={(e: any) => {
 															if (e.target.value !== autocompleteConfig.autocomplete.model) {
-																setHasUnsavedChanges(true)//huqb
+																setHasUnsavedChanges(true) //huqb
 															}
 															setAutocompleteConfig({
 																...autocompleteConfig,
@@ -698,7 +698,7 @@ const SettingsView = ({ onDone, targetSection }: SettingsViewProps) => {
 																	...autocompleteConfig.autocomplete,
 																	model: e.target.value,
 																},
-															});
+															})
 														}}
 														placeholder={t("settings.autocomplete.model")}>
 														{t("settings.autocomplete.model")}
@@ -707,8 +707,8 @@ const SettingsView = ({ onDone, targetSection }: SettingsViewProps) => {
 													<VSCodeCheckbox
 														checked={autocompleteConfig.autocomplete.enable}
 														onChange={(e: any) => {
-															if (e.target.checked !== autocompleteConfig.autocomplete.enable) {	
-																setHasUnsavedChanges(true)//huqb
+															if (e.target.checked !== autocompleteConfig.autocomplete.enable) {
+																setHasUnsavedChanges(true) //huqb
 															}
 															setAutocompleteConfig({
 																...autocompleteConfig,
@@ -716,7 +716,7 @@ const SettingsView = ({ onDone, targetSection }: SettingsViewProps) => {
 																	...autocompleteConfig.autocomplete,
 																	enable: e.target.checked,
 																},
-															});
+															})
 														}}>
 														{t("settings.autocomplete.enable")}
 													</VSCodeCheckbox>
@@ -781,8 +781,10 @@ const SettingsView = ({ onDone, targetSection }: SettingsViewProps) => {
 										</div> */}
 										{/* Language Selection */}
 										<div className="border border-solid border-[var(--vscode-panel-border)] rounded-md p-[10px] mb-5 bg-[var(--vscode-panel-background)]">
-											<details>
-												<summary className="cursor-pointer font-medium">{t("settings.language.title")}</summary>
+											<details open>
+												<summary className="cursor-pointer font-medium">
+													{t("settings.language.title")}
+												</summary>
 												<div className="mt-3">
 													<VSCodeDropdown
 														value={currentLanguage || "English"}
@@ -790,16 +792,6 @@ const SettingsView = ({ onDone, targetSection }: SettingsViewProps) => {
 														style={{ position: "relative", zIndex: 2000 }}>
 														<VSCodeOption value="en">English</VSCodeOption>
 														<VSCodeOption value="zh-CN">简体中文</VSCodeOption>
-														<VSCodeOption value="ja">日本語</VSCodeOption>
-														<VSCodeOption value="ru">Русский</VSCodeOption>
-														<VSCodeOption value="fr">Français</VSCodeOption>
-														<VSCodeOption value="ar">العربية</VSCodeOption>
-														<VSCodeOption value="ko">한국어</VSCodeOption>
-														<VSCodeOption value="zh-TW">繁體中文</VSCodeOption>
-														<VSCodeOption value="de">Deutsch</VSCodeOption>
-														<VSCodeOption value="it">Italiano</VSCodeOption>
-														<VSCodeOption value="ms">Bahasa Melayu</VSCodeOption>
-														<VSCodeOption value="es">Español</VSCodeOption>
 													</VSCodeDropdown>
 												</div>
 											</details>
@@ -862,13 +854,15 @@ const SettingsView = ({ onDone, targetSection }: SettingsViewProps) => {
 									{renderSectionHeader("about")}
 									<Section>
 										<div className="text-center text-[var(--vscode-descriptionForeground)] text-xs leading-[1.2] px-0 py-0 pr-2 pb-[15px] mt-auto">
-										<p className="break-words m-0 p-0">
-											{t("settings.feedback.text")}{" "}
-											<VSCodeLink href="https://github.com/codee-agent/codee" className="inline">
-												https://github.com/codee-agent/codee
-											</VSCodeLink>
-										</p>
-										<p className="italic mt-[10px] mb-0 p-0">{t("settings.feedback.version", { version })}</p>
+											<p className="break-words m-0 p-0">
+												{t("settings.feedback.text")}{" "}
+												<VSCodeLink href="https://github.com/codee-agent/codee" className="inline">
+													https://github.com/codee-agent/codee
+												</VSCodeLink>
+											</p>
+											<p className="italic mt-[10px] mb-0 p-0">
+												{t("settings.feedback.version", { version })}
+											</p>
 										</div>
 									</Section>
 								</div>

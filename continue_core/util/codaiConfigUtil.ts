@@ -20,6 +20,9 @@ export interface CodeeConfig {
 		apiBase: string
 		enable: boolean
 	}
+	advanced: {
+		memorybank: boolean
+	}
 	language: string
 }
 
@@ -31,6 +34,9 @@ const DEFAULT_CONFIG: CodeeConfig = {
 		apiKey: "",
 		apiBase: "",
 		enable: false,
+	},
+	advanced: {
+		memorybank: false,
 	},
 	language: "en",
 }
@@ -81,4 +87,19 @@ export function getLanguageConfig(): string {
 
 export function updateLanguageConfig(language: string): void {
 	updateCodeeConfig({ language })
+}
+
+export function getAdvancedConfig() {
+	const advanced = getCodeeConfig().advanced
+	return advanced
+}
+
+export function updateAdvancedConfig(advanced: Partial<CodeeConfig["advanced"]>): void {
+	const currentConfig = getCodeeConfig()
+	updateCodeeConfig({
+		advanced: {
+			...currentConfig.advanced,
+			...advanced,
+		},
+	})
 }

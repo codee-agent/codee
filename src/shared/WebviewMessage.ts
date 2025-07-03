@@ -43,6 +43,13 @@ export interface WebviewMessage {
 		| "getLanguageConfig"
 		| "updateLanguageConfig"
 		| "languageConfig"
+		// wangyuan
+		| "enhancePrompt"
+		| "enhancedPromptResult"
+		| "memoryBank"
+		| "getAdvancedConfig"
+		| "advancedConfig"
+		| "getMemoryBank"
 	text?: string
 	disabled?: boolean
 	apiConfiguration?: ApiConfiguration

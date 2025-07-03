@@ -26,18 +26,18 @@ class NCompass extends OpenAI {
 		return finalOptions
 	}
 
-  protected override _getHeaders() {
-    const headers = super._getHeaders() as { 
-      "Content-Type": string; 
-      Authorization: string; 
-      "api-key": string; 
-      "X-Codee-Token": string; 
-      "X-Codee-Ver": string; 
-      Accept?: string 
-    };
-    headers["Accept"] = "text/event-stream";
-    return headers;
-  }
+	protected override _getHeaders() {
+		const headers = super._getHeaders() as {
+			"Content-Type": string
+			Authorization: string
+			"api-key": string
+			"X-Codee-Token": string
+			"X-Codee-Ver": string
+			Accept?: string
+		}
+		headers["Accept"] = "text/event-stream"
+		return headers
+	}
 
 	protected override async _embed(chunks: string[]): Promise<number[][]> {
 		const resp = await this.fetch(NCompass.embeddingsApiEndpoint, {

@@ -5,7 +5,7 @@ import { renderChatMessage } from "../../util/messageContent.js"
 import { BaseLLM } from "../index.js"
 import { fromChatCompletionChunk, LlmApiRequestType, toChatBody } from "../openaiTypeConverters.js"
 import { streamSse } from "../stream.js"
-import { AesUtil } from "../../util/aesutil.js";
+import { AesUtil } from "../../util/aesutil.js"
 
 const NON_CHAT_MODELS = [
 	"text-davinci-002",
@@ -173,8 +173,8 @@ class OpenAI extends BaseLLM {
 			"Content-Type": "application/json",
 			Authorization: `Bearer ${this.apiKey}`,
 			"api-key": this.apiKey ?? "", // For Azure
-			'X-Codee-Token': AesUtil.encrypt(this.apiKey ?? ""),//huqb
-			'X-Codee-Ver': 'CodeeVsCodeExtension/'+ AesUtil.getPluginVersion(),
+			"X-Codee-Token": AesUtil.encrypt(this.apiKey ?? ""), //huqb
+			"X-Codee-Ver": "CodeeVsCodeExtension/" + AesUtil.getPluginVersion(),
 		}
 	}
 

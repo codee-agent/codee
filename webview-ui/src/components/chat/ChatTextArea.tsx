@@ -68,7 +68,7 @@ interface ChatTextAreaProps {
 	placeholderText: string
 	selectedImages: string[]
 	setSelectedImages: React.Dispatch<React.SetStateAction<string[]>>
-	onSend: () => void
+	onSend: (message?: string) => void
 	onSelectImages: () => void
 	shouldDisableImages: boolean
 	onHeightChange?: (height: number) => void
@@ -270,6 +270,7 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 			platform,
 			localWorkflowToggles,
 			globalWorkflowToggles,
+			customInstructions, //wy
 		} = useExtensionState()
 		const [isTextAreaFocused, setIsTextAreaFocused] = useState(false)
 		const [isDraggingOver, setIsDraggingOver] = useState(false)
@@ -311,6 +312,7 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 		const [fileSearchResults, setFileSearchResults] = useState<SearchResult[]>([])
 		const [searchLoading, setSearchLoading] = useState(false)
 		const [, metaKeyChar] = useMetaKeyDetection(platform)
+		const [isEnhancing, setIsEnhancing] = useState(false) //wangyuan
 
 		// Add a ref to track previous menu state
 		const prevShowModelSelector = useRef(showModelSelector)
@@ -346,6 +348,33 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 					if (!message.mentionsRequestId || message.mentionsRequestId === currentSearchQueryRef.current) {
 						setFileSearchResults(message.results || [])
 						setSearchLoading(false)
+					}
+					break
+				}
+				// wy
+				case "enhancedPromptResult": {
+					if (message.text) {
+						// Remove <think> and <thinking> tags (case insensitive) and their contents
+						// console.log("原始文本:", message.text);
+						// console.log("正则表达式:", /<think>.*?<\/think>|<thinking>.*?<\/thinking>/gis);
+						const cleanedText = message.text.replace(/<think>.*?<\/think>|<thinking>.*?<\/thinking>/gis, "")
+						// console.log("处理后文本:", cleanedText);
+						setInputValue(cleanedText)
+						setIsEnhancing(false)
+					}
+					break
+				}
+				case "memoryBankResult": {
+					const initPrompt =
+						message.text == "init"
+							? "initialize memory bank"
+							: message.text == "update"
+								? "update memory bank"
+								: "follow your custom instructions"
+					setInputValue(initPrompt)
+					if (!sendingDisabled) {
+						setIsTextAreaFocused(false)
+						onSend(initPrompt)
 					}
 					break
 				}
@@ -1342,6 +1371,16 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 			)
 		}
 
+		const handleEnhancePrompt = useCallback(() => {
+			if (!inputValue.trim() || isEnhancing) return
+
+			setIsEnhancing(true)
+			vscode.postMessage({
+				type: "enhancePrompt",
+				text: inputValue.trim(),
+			})
+		}, [inputValue, isEnhancing])
+
 		return (
 			<div>
 				<div
@@ -1590,6 +1629,18 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 									fontSize: 16.5,
 								}}
 							/> */}
+							{/* wangyuan */}
+							<div
+								data-testid="enhance-button"
+								className={`input-icon-button ${
+									!inputValue.trim() || isEnhancing || sendingDisabled ? "disabled" : ""
+								} codicon codicon-sparkle ${isEnhancing ? "loading" : ""}`}
+								onClick={handleEnhancePrompt}
+								style={{
+									marginRight: 5.5,
+									fontSize: 16.5,
+								}}
+							/>
 							<div
 								data-testid="send-button"
 								className={`input-icon-button ${sendingDisabled ? "disabled" : ""} codicon codicon-send`}

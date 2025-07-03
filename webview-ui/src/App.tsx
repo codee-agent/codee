@@ -22,20 +22,17 @@ const AppContent = () => {
 			type: "getLanguageConfig",
 		})
 	}, [])
-	const handleMessage = useCallback(
-		(e: MessageEvent) => {
-			const message: ExtensionMessage = e.data
-			switch (message.type) {
+	const handleMessage = useCallback((e: MessageEvent) => {
+		const message: ExtensionMessage = e.data
+		switch (message.type) {
 			case "languageConfig":
-					// 更新语言
-					i18n.changeLanguage(message.language || "en")
-					break
-			}
-		},
-		[],
-	)
+				// 更新语言
+				i18n.changeLanguage(message.language || "en")
+				break
+		}
+	}, [])
 	useEvent("message", handleMessage)
-	
+
 	const {
 		didHydrateState,
 		showWelcome,

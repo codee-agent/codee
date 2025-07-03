@@ -492,8 +492,8 @@ export async function activate(context: vscode.ExtensionContext) {
 						const fixAction = new vscode.CodeAction("Fix with Codee", vscode.CodeActionKind.QuickFix)
 						fixAction.isPreferred = true
 						fixAction.command = {
-						command: "codee.fixWithCodee",
-						title: "Fix with Codee",
+							command: "codee.fixWithCodee",
+							title: "Fix with Codee",
 							arguments: [expandedRange, context.diagnostics],
 						}
 						actions.push(fixAction)

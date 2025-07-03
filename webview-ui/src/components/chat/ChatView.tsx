@@ -34,6 +34,7 @@ import rehypeRemark from "rehype-remark"
 import rehypeParse from "rehype-parse"
 import HomeHeader from "../welcome/HomeHeader"
 import AutoApproveBar from "./auto-approve-menu/AutoApproveBar"
+import AdvancedAbilitiesMenu from "./advanced-abilities-menu/AdvancedAbilitiesMenu"
 import { t } from "i18next"
 import { Trans } from "react-i18next"
 import CodeeLogoVariable from "@/assets/CodeeLogoVariable"
@@ -114,7 +115,7 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 		return getTotalTokensFromApiReqMessage(lastApiReqMessage)
 	}, [modifiedMessages])
 
-	const [inputValue, setInputValue] = useState("")
+	const [inputValue, setInputValue] = useState<string>("")
 	const [activeQuote, setActiveQuote] = useState<string | null>(null)
 	const [isTextAreaFocused, setIsTextAreaFocused] = useState(false)
 	const textAreaRef = useRef<HTMLTextAreaElement>(null)
@@ -133,6 +134,7 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 	const disableAutoScrollRef = useRef(false)
 	const [showScrollToBottom, setShowScrollToBottom] = useState(false)
 	const [isAtBottom, setIsAtBottom] = useState(false)
+	const [hasMemoryBank, setHasMemoryBank] = useState<boolean | undefined>(false)
 
 	useEffect(() => {
 		const handleCopy = async (e: ClipboardEvent) => {
@@ -442,8 +444,8 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 	}, [modifiedMessages, clineAsk, enableButtons, primaryButtonText])
 
 	const handleSendMessage = useCallback(
-		async (text: string, images: string[]) => {
-			let messageToSend = text.trim()
+		async (text: string, images: string[], message?: string) => {
+			let messageToSend = text.trim() || message?.trim() // wy
 			const hasContent = messageToSend || images.length > 0
 
 			// Prepend the active quote if it exists
@@ -700,6 +702,12 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 							handleSecondaryButtonClick(message.text ?? "", message.images ?? [])
 							break
 					}
+					break
+				// wy
+				case "advancedConfig":
+					const advancedConfig = message.advancedConfig
+					setHasMemoryBank(advancedConfig?.advanced?.memorybank)
+					break
 			}
 			// textAreaRef.current is not explicitly required here since react guarantees that ref will be stable across re-renders, and we're not using its value but its reference.
 		},
@@ -1068,7 +1076,12 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 				</div>
 			)}
 
-			{!task && <AutoApproveBar />}
+			{!task && (
+				<>
+					<AutoApproveBar />
+					<AdvancedAbilitiesMenu hasMemoryBank={hasMemoryBank} setHasMemoryBank={setHasMemoryBank} />
+				</>
+			)}
 
 			{task && (
 				<>
@@ -1102,7 +1115,10 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 							initialTopMostItemIndex={groupedMessages.length - 1}
 						/>
 					</div>
-					<AutoApproveBar />
+					<>
+						<AutoApproveBar />
+						<AdvancedAbilitiesMenu hasMemoryBank={hasMemoryBank} setHasMemoryBank={setHasMemoryBank} />
+					</>
 					{showScrollToBottom ? (
 						<div
 							style={{
@@ -1179,7 +1195,7 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 				placeholderText={placeholderText}
 				selectedImages={selectedImages}
 				setSelectedImages={setSelectedImages}
-				onSend={() => handleSendMessage(inputValue, selectedImages)}
+				onSend={(message?: string) => handleSendMessage(inputValue, selectedImages, (message = message))}
 				onSelectImages={selectImages}
 				shouldDisableImages={shouldDisableImages}
 				onHeightChange={() => {

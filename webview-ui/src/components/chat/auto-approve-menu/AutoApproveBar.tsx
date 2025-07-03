@@ -64,7 +64,7 @@ const AutoApproveBar = ({ style }: AutoApproveBarProps) => {
 			) : null,
 			...minusFavorites.map((action, index) => (
 				<span className="text-[color:var(--vscode-foreground-muted)] opacity-60" key={action?.id}>
-					{action? t(action.shortName) : 'Null'}
+					{action ? t(action.shortName) : "Null"}
 					{index < minusFavorites.length - 1 && ","}
 				</span>
 			)),
