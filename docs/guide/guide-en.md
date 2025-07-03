@@ -139,3 +139,15 @@
   <image src="https://github.com/user-attachments/assets/22edc622-e899-4e1a-835f-9f60fc98b9c7" width="60%"></image>
 </p>
 
+#### 13.Memory Bank Usage:
+
+- The Memory Bank is a structured document system that remembers all the details of your project and maintains context across sessions, transforming Codee from a stateless assistant into a long-term development partner.
+
+- Particularly for larger projects with extensive content, when the context window is exhausted or accidentally closed, requiring a restart, the Memory Bank can recall the current project's details and previously completed work—eliminating the need to start from scratch.
+
+- The Memory Bank is only effective within the current project workspace. To enable it for the first time, open the advanced capabilities section, locate "Memory Bank," and click "Initialize." After the AI assists with certain tasks, you should also open "Memory Bank" and click "Update Memory" to keep it synchronized. If a new session is started or verification hallucinations occur during coding, use "Recall Memory" to restore the context, allowing Codee to effectively remember the project's content and prior work.
+
+<p>
+  <image src="https://github.com/user-attachments/assets/ec7422b5-2e25-4f25-b99b-809a8b711553" width="60%"></image>
+</p>
+
