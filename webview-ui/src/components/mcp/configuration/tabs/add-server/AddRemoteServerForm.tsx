@@ -1,10 +1,12 @@
-import { useRef, useState } from "react"
-import { vscode } from "@/utils/vscode"
-import { VSCodeButton, VSCodeLink, VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 import { LINKS } from "@/constants"
+import { useExtensionState } from "@/context/ExtensionStateContext"
 import { McpServiceClient } from "@/services/grpc-client"
 import { convertProtoMcpServersToMcpServers } from "@shared/proto-conversions/mcp/mcp-server-conversion"
-import { useExtensionState } from "@/context/ExtensionStateContext"
+import { McpServers } from "@shared/proto/mcp"
+import { EmptyRequest } from "@shared/proto/common"
+import { AddRemoteMcpServerRequest } from "@shared/proto/mcp"
+import { VSCodeButton, VSCodeLink, VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
+import { useState } from "react"
 import { useTranslation } from "react-i18next"
 
 const AddRemoteServerForm = ({ onServerAdded }: { onServerAdded: () => void }) => {
@@ -41,14 +43,16 @@ const AddRemoteServerForm = ({ onServerAdded }: { onServerAdded: () => void }) =
 		setShowConnectingMessage(true)
 
 		try {
-			const servers = await McpServiceClient.addRemoteMcpServer({
-				serverName: serverName.trim(),
-				serverUrl: serverUrl.trim(),
-			})
+			const servers: McpServers = await McpServiceClient.addRemoteMcpServer(
+				AddRemoteMcpServerRequest.create({
+					serverName: serverName.trim(),
+					serverUrl: serverUrl.trim(),
+				}),
+			)
 
 			setIsSubmitting(false)
 
-			const mcpServers = convertProtoMcpServersToMcpServers(servers)
+			const mcpServers = convertProtoMcpServersToMcpServers(servers.mcpServers)
 			setMcpServers(mcpServers)
 
 			setServerName("")
@@ -118,7 +122,9 @@ const AddRemoteServerForm = ({ onServerAdded }: { onServerAdded: () => void }) =
 					appearance="secondary"
 					style={{ width: "100%", marginBottom: "5px", marginTop: 15 }}
 					onClick={() => {
-						vscode.postMessage({ type: "openMcpSettings" })
+						McpServiceClient.openMcpSettings(EmptyRequest.create({})).catch((error) => {
+							console.error("Error opening MCP settings:", error)
+						})
 					}}>
 					{t("mcp.addServer.editConfig")}
 				</VSCodeButton>

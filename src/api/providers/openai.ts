@@ -7,7 +7,7 @@ import { convertToOpenAiMessages } from "../transform/openai-format"
 import { ApiStream } from "../transform/stream"
 import { convertToR1Format } from "../transform/r1-format"
 import type { ChatCompletionReasoningEffort } from "openai/resources/chat/completions"
-import { EncryptUtil, getPluginVersion } from "../../utils/encrypt"
+import { EncryptUtil, getPluginVersion } from "@/utils/encrypt"
 
 export class OpenAiHandler implements ApiHandler {
 	private options: ApiHandlerOptions
@@ -114,6 +114,10 @@ export class OpenAiHandler implements ApiHandler {
 					type: "usage",
 					inputTokens: chunk.usage.prompt_tokens || 0,
 					outputTokens: chunk.usage.completion_tokens || 0,
+					// @ts-ignore-next-line
+					cacheReadTokens: chunk.usage.prompt_tokens_details?.cached_tokens || 0,
+					// @ts-ignore-next-line
+					cacheWriteTokens: chunk.usage.prompt_cache_miss_tokens || 0,
 				}
 			}
 		}

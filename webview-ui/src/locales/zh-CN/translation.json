@@ -105,7 +105,38 @@
 			"reasoningEffort": "修改推理力度",
 			"low": "低",
 			"high": "高",
-			"complexPrompts": "Codee使用的是复杂提示词，Claude或deepseek-v3模型最适合。性能较差的模型可能无法按预期工作。"
+			"complexPrompts": "Codee使用的是复杂提示词，Claude或deepseek-v3模型最适合。性能较差的模型可能无法按预期工作。",
+			"customHeaders": "自定义请求头",
+			"addHeader": "添加请求头",
+			"headerName": "请求头名称",
+			"headerValue": "请求头值",
+			"remove": "删除",
+			"modelConfiguration": "模型配置",
+			"supportsBrowserUse": "支持浏览器使用",
+			"inputPricePerMillion": "输入价格 / 100万tokens",
+			"outputPricePerMillion": "输出价格 / 100万tokens",
+			"enterApiKey": "输入API密钥...",
+			"enterBaseUrl": "输入服务器URL...",
+			"enterModelId": "输入模型ID...",
+			"getApiKey": "获取{{provider}} API密钥",
+			"loading": "加载中...",
+			"balance": "余额",
+			"keyStoredLocally": "此密钥存储在本地，仅用于从此扩展发起API请求。",
+			"defaultBehaviorDesc": "默认行为是在提供商（如AWS、Google Vertex、Anthropic）之间负载均衡请求，在考虑提供商正常运行时间的同时优先考虑价格",
+			"priceProviderDesc": "按价格排序提供商，优先使用成本最低的提供商",
+			"throughputProviderDesc": "按吞吐量排序提供商，优先使用吞吐量最高的提供商（可能增加成本）",
+			"latencyProviderDesc": "按响应时间排序提供商，优先使用延迟最低的提供商",
+			"oauthCredentialsPath": "OAuth凭证路径（可选）",
+			"oauthPathPlaceholder": "默认: ~/.gemini/oauth_creds.json",
+			"oauthPathDesc": "OAuth凭证文件的路径。留空将使用默认位置（~/.gemini/oauth_creds.json）。",
+			"discoveredProjectId": "发现的项目ID",
+			"projectIdAutoDesc": "此项目ID是从您的OAuth凭证中自动发现的。",
+			"geminiCliDesc": "此提供商使用Gemini CLI工具的OAuth身份验证，不需要API密钥。如果您尚未进行身份验证，请先在终端中运行",
+			"geminiCliSetup": "Gemini CLI设置说明",
+			"importantRequirements": "重要要求",
+			"geminiCliRequirements": "• 首先，您需要安装**Gemini CLI工具**\n• 然后，在终端中运行**gemini**并确保您**使用Google登录**\n• 仅适用于**个人Google账户**（不适用于Google Workspace账户）\n• 不使用API密钥 - 通过OAuth处理身份验证\n• 需要先安装并验证Gemini CLI工具",
+			"freeTierAccess": "✓ 通过OAuth身份验证的免费层访问",
+			"complexPromptsNote": "注意：Codee使用复杂的提示词，最适合Claude模型。性能较差的模型可能无法按预期工作。"
 		}
 	},
 	"chat": {
@@ -203,6 +234,18 @@
 			"update": "更新记忆",
 			"remember": "唤醒记忆",
 			"description": "记忆体是一个结构化的文档系统，能记住你项目的所有细节，并且能够跨会话维护上下文，从而让Codee从一个无状态的助手转变为一个长期的开发伙伴。"
+		},
+		"codeIndex": {
+			"title": "代码索引",
+			"description": "提供智能代码索引和分析功能，使大语言模型与代码库交互，提供复杂代码库下实时的检索任务，请在代码变更后及时更新索引。",
+			"refresh": "刷新索引",
+			"disabled": "代码索引已禁用，请开启后使用",
+			"error": "代码索引错误",
+			"downloadError": "下载错误，请手动下载并放置到指定位置，",
+			"downloadErrorClick": "点我",
+			"downloadErrorDownload": "下载",
+			"downloadErrorOpen": "打开指定位置",
+			"no_workspace": "未打开工作区 - 请打开工作区文件夹以使用代码索引"
 		}
 	},
 	"mcp": {

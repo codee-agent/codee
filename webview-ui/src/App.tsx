@@ -11,7 +11,7 @@ import { UiServiceClient } from "./services/grpc-client"
 import McpView from "./components/mcp/configuration/McpConfigurationView"
 import { Providers } from "./Providers"
 import { Boolean, EmptyRequest } from "@shared/proto/common"
-
+import { WebviewProviderType } from "@shared/webview/types"
 import i18n from "./i18n"
 import { vscode } from "./utils/vscode"
 

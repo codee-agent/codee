@@ -9,6 +9,9 @@ import os from "os"
 import { execa } from "@packages/execa"
 
 import { getWorkspacePath } from "@utils/path"
+import { createHash } from "crypto"
+import { getContinueGlobalPath } from "@continuedev/core/util/paths"
+import { existsSync } from "fs"
 
 export const GlobalFileNames = {
 	apiConversationHistory: "api_conversation_history.json",
@@ -194,4 +197,16 @@ export async function createMemorybankDir(workspacePath: string): Promise<string
 	const memorybankDir = path.join(workspacePath, "memory-bank")
 	await fs.mkdir(memorybankDir)
 	return memorybankDir
+}
+
+export async function getMcpPath(url?: string) {
+	const mcpPath = path.join(getContinueGlobalPath(), "mcp")
+	try {
+		if (!existsSync(mcpPath)) {
+			await fs.mkdir(mcpPath, { recursive: true })
+		}
+		return mcpPath
+	} catch {
+		return mcpPath
+	}
 }

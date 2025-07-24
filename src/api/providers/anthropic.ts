@@ -139,7 +139,7 @@ export class AnthropicHandler implements ApiHandler {
 		}
 
 		for await (const chunk of stream) {
-			switch (chunk.type) {
+			switch (chunk?.type) {
 				case "message_start":
 					// tells us cache reads/writes/input/output
 					const usage = chunk.message.usage

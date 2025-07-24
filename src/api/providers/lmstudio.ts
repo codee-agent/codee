@@ -4,6 +4,7 @@ import { ApiHandler } from "../"
 import { ApiHandlerOptions, ModelInfo, openAiModelInfoSaneDefaults } from "@shared/api"
 import { convertToOpenAiMessages } from "../transform/openai-format"
 import { ApiStream } from "../transform/stream"
+import { withRetry } from "../retry"
 
 export class LmStudioHandler implements ApiHandler {
 	private options: ApiHandlerOptions
@@ -27,7 +28,6 @@ export class LmStudioHandler implements ApiHandler {
 			const stream = await this.client.chat.completions.create({
 				model: this.getModel().id,
 				messages: openAiMessages,
-				temperature: 0,
 				stream: true,
 			})
 			for await (const chunk of stream) {
@@ -38,11 +38,17 @@ export class LmStudioHandler implements ApiHandler {
 						text: delta.content,
 					}
 				}
+				if (delta && "reasoning_content" in delta && delta.reasoning_content) {
+					yield {
+						type: "reasoning",
+						reasoning: (delta.reasoning_content as string | undefined) || "",
+					}
+				}
 			}
 		} catch (error) {
 			// LM Studio doesn't return an error code/body for now
 			throw new Error(
-				"Please check the LM Studio developer logs to debug what went wrong. You may need to load the model with a larger context length to work with Codee's prompts.",
+				"Please check the LM Studio developer logs to debug what went wrong. You may need to load the model with a larger context length to work with Cline's prompts.",
 			)
 		}
 	}

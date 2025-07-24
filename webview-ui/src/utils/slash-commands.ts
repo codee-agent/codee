@@ -17,12 +17,7 @@ export const DEFAULT_SLASH_COMMANDS: SlashCommand[] = [
 	},
 	{
 		name: "newrule",
-		description: "Create a new Cline rule based on your conversation",
-		section: "default",
-	},
-	{
-		name: "reportbug",
-		description: "Create a Github issue with Cline",
+		description: "Create a new Codee rule based on your conversation",
 		section: "default",
 	},
 ]
@@ -75,9 +70,9 @@ export function getWorkflowCommands(
 
 // Regex for detecting slash commands in text
 // currently doesn't allow whitespace inside of the filename
-export const slashCommandRegex = /\/([a-zA-Z0-9_\.-]+)(\s|$)/
+export const slashCommandRegex = /\/([a-zA-Z0-9_.-]+)(\s|$)/
 export const slashCommandRegexGlobal = new RegExp(slashCommandRegex.source, "g")
-export const slashCommandDeleteRegex = /^\s*\/([a-zA-Z0-9_\.-]+)$/
+export const slashCommandDeleteRegex = /^\s*\/([a-zA-Z0-9_.-]+)$/
 
 /**
  * Removes a slash command at the cursor position

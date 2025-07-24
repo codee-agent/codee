@@ -1,38 +1,18 @@
-import axios from "axios"
 import * as vscode from "vscode"
 import { getAllExtensionState } from "../core/storage/state"
-import { EncryptUtil, getPluginVersion } from "../utils/encrypt"
-
-let API_URL = ""
-let API_KEY = ""
-// const MODEL = 'qwen3b-coder';//'qwen2.5:7b';
-let MODEL = ""
+import { buildApiHandler } from "@api/index"
 
 export async function enhancePrompt(input: string, context?: vscode.ExtensionContext): Promise<string> {
-	console.log("Enhancing prompt:", input)
+	let enhancedPrompt = ""
 	try {
 		if (context) {
 			try {
 				const state = await getAllExtensionState(context)
-				API_KEY = state.apiConfiguration.openAiApiKey || ""
-				API_URL = state.apiConfiguration.openAiBaseUrl || ""
-				MODEL = state.apiConfiguration.openAiModelId || "qwen3b-coder"
-				API_URL += "/chat/completions"
-			} catch (error) {
-				console.error("Failed to get extension state:", error)
-			}
-		}
+				const api = buildApiHandler(state.apiConfiguration)
 
-		if (!API_KEY) {
-			throw new Error("未配置API Key，请在设置中配置")
-		}
-		const response = await axios.post(
-			API_URL,
-			{
-				model: MODEL,
-				messages: [
+				const messages = [
 					{
-						role: "system",
+						role: "assistant" as const,
 						content: `你是一个专业的提示词优化助手。你需要优化用户输入的提示词，请遵循以下步骤：
                         1. 分析提示词结构：
                         - 识别提示词中的关键要素和目标
@@ -53,25 +33,22 @@ export async function enhancePrompt(input: string, context?: vscode.ExtensionCon
                         `,
 					},
 					{
-						role: "user",
+						role: "user" as const,
 						content: `请优化以下提示词，使其更加清晰和有效:\n${input}`,
 					},
-				],
-				temperature: 0.2,
-				max_tokens: 2000,
-				stream: false,
-			},
-			{
-				headers: {
-					Authorization: `Bearer ${API_KEY}`,
-					"Content-Type": "application/json",
-					"X-Codee-Token": EncryptUtil.encrypt(API_KEY), //huqb
-					"X-Codee-Ver": "CodeeVsCodeExtension/" + getPluginVersion(),
-				},
-			},
-		)
-		console.log("Received response:", response.data)
-		const enhancedPrompt = response.data.choices[0]?.message?.content
+				]
+				let stream = api.createMessage("", messages)
+
+				for await (const chunk of stream) {
+					if (chunk.type === "text") {
+						enhancedPrompt += chunk.text
+					}
+				}
+			} catch (error) {
+				console.error("Failed to get enhancedPrompt:", error)
+				return input
+			}
+		}
 		return enhancedPrompt || input
 	} catch (error) {
 		console.error("Error enhancing prompt:", error)

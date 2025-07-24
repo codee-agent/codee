@@ -2,8 +2,8 @@ import { VSCodeButton, VSCodeLink } from "@vscode/webview-ui-toolkit/react"
 import { memo, useState } from "react"
 import styled from "styled-components"
 import { useExtensionState } from "@/context/ExtensionStateContext"
-import { vscode } from "@/utils/vscode"
-import { TelemetrySetting } from "@shared/TelemetrySetting"
+import { StateServiceClient } from "@/services/grpc-client"
+import { TelemetrySettingEnum, TelemetrySettingRequest } from "@shared/proto/state"
 
 const BannerContainer = styled.div`
 	background-color: var(--vscode-banner-background);
@@ -53,8 +53,16 @@ const TelemetryBanner = () => {
 		navigateToSettings()
 	}
 
-	const handleClose = () => {
-		vscode.postMessage({ type: "telemetrySetting", telemetrySetting: "enabled" satisfies TelemetrySetting })
+	const handleClose = async () => {
+		try {
+			await StateServiceClient.updateTelemetrySetting(
+				TelemetrySettingRequest.create({
+					setting: TelemetrySettingEnum.ENABLED,
+				}),
+			)
+		} catch (error) {
+			console.error("Error updating telemetry setting:", error)
+		}
 	}
 
 	return (
@@ -69,7 +77,7 @@ const TelemetryBanner = () => {
 					(and access experimental features)
 				</i>
 				<div style={{ marginTop: 4 }}>
-					Codee collects anonymous error and usage data to help us fix bugs and improve the extension. No code, prompts,
+					codee collects anonymous error and usage data to help us fix bugs and improve the extension. No code, prompts,
 					or personal information is ever sent.
 					<div style={{ marginTop: 4 }}>
 						You can turn this setting off in{" "}

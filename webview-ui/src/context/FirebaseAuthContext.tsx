@@ -1,7 +1,11 @@
-import { User, getAuth, signInWithCustomToken, signOut } from "firebase/auth"
-import { initializeApp } from "firebase/app"
-import React, { createContext, useCallback, useContext, useEffect, useState } from "react"
+import { AccountServiceClient } from "@/services/grpc-client"
 import { vscode } from "@/utils/vscode"
+import { EmptyRequest } from "@shared/proto/common"
+import { initializeApp } from "firebase/app"
+import { User, getAuth, signInWithCustomToken, signOut } from "firebase/auth"
+import React, { createContext, useCallback, useContext, useEffect, useState } from "react"
+import { useExtensionState } from "./ExtensionStateContext"
+import { AuthStateChanged, AuthStateChangedRequest } from "@shared/proto/account"
 
 // Firebase configuration from extension
 const firebaseConfig = {
@@ -26,6 +30,7 @@ const FirebaseAuthContext = createContext<FirebaseAuthContextType | undefined>(u
 export const FirebaseAuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 	const [user, setUser] = useState<User | null>(null)
 	const [isInitialized, setIsInitialized] = useState(false)
+	const { setUserInfo } = useExtensionState()
 
 	// Initialize Firebase
 	const app = initializeApp(firebaseConfig)
@@ -37,24 +42,29 @@ export const FirebaseAuthProvider: React.FC<{ children: React.ReactNode }> = ({ 
 			setUser(user)
 			setIsInitialized(true)
 
-			console.log("onAuthStateChanged user", user)
-
 			if (!user) {
 				// when opening the extension in a new webview (ie if you logged in to sidebar webview but then open a popout tab webview) this effect will trigger without the original webview's session, resulting in us clearing out the user info object.
 				// we rely on this object to determine if the user is logged in, so we only want to clear it when the user logs out, rather than whenever a webview without a session is opened.
 				return
 			}
 			// Sync auth state with extension
-			vscode.postMessage({
-				type: "authStateChanged",
-				user: user
-					? {
-							displayName: user.displayName,
-							email: user.email,
-							photoURL: user.photoURL,
-						}
-					: null,
-			})
+			AccountServiceClient.authStateChanged(
+				AuthStateChangedRequest.create({
+					user: user
+						? {
+								displayName: user.displayName ?? undefined,
+								email: user.email ?? undefined,
+								photoURL: user.photoURL ?? undefined,
+							}
+						: undefined,
+				}),
+			)
+				.then((response: AuthStateChanged) => {
+					setUserInfo(response.user)
+				})
+				.catch((error) => {
+					console.error("Error updating auth state via gRPC:", error)
+				})
 		})
 
 		return () => unsubscribe()
@@ -73,17 +83,21 @@ export const FirebaseAuthProvider: React.FC<{ children: React.ReactNode }> = ({ 
 		[auth],
 	)
 
-	// Listen for auth callback from extension
+	// Set up authCallback subscription
 	useEffect(() => {
-		const handleMessage = (event: MessageEvent) => {
-			const message = event.data
-			if (message.type === "authCallback" && message.customToken) {
-				signInWithToken(message.customToken)
-			}
-		}
+		const cleanup = AccountServiceClient.subscribeToAuthCallback(EmptyRequest.create({}), {
+			onResponse: (event) => {
+				if (event.value) {
+					signInWithToken(event.value)
+				}
+			},
+			onError: (error) => {
+				console.error("Error in authCallback subscription:", error)
+			},
+			onComplete: () => {},
+		})
 
-		window.addEventListener("message", handleMessage)
-		return () => window.removeEventListener("message", handleMessage)
+		return cleanup
 	}, [signInWithToken])
 
 	const handleSignOut = useCallback(async () => {

@@ -105,7 +105,38 @@
 			"reasoningEffort": "Modify reasoning effort",
 			"low": "low",
 			"high": "high",
-			"complexPrompts": "Codee uses complex prompts and works best with Claude or deepseek-v3 models. Less capable models may not work as expected."
+			"complexPrompts": "Codee uses complex prompts and works best with Claude or deepseek-v3 models. Less capable models may not work as expected.",
+			"customHeaders": "Custom Headers",
+			"addHeader": "Add Header",
+			"headerName": "Header name",
+			"headerValue": "Header value",
+			"remove": "Remove",
+			"modelConfiguration": "Model Configuration",
+			"supportsBrowserUse": "Supports browser use",
+			"inputPricePerMillion": "Input Price / 1M tokens",
+			"outputPricePerMillion": "Output Price / 1M tokens",
+			"enterApiKey": "Enter API Key...",
+			"enterBaseUrl": "Enter base URL...",
+			"enterModelId": "Enter Model ID...",
+			"getApiKey": "Get {{provider}} API Key",
+			"loading": "Loading...",
+			"balance": "Balance",
+			"keyStoredLocally": "This key is stored locally and only used to make API requests from this extension.",
+			"defaultBehaviorDesc": "Default behavior is to load balance requests across providers (like AWS, Google Vertex, Anthropic), prioritizing price while considering provider uptime",
+			"priceProviderDesc": "Sort providers by price, prioritizing the lowest cost provider",
+			"throughputProviderDesc": "Sort providers by throughput, prioritizing the provider with the highest throughput (may increase cost)",
+			"latencyProviderDesc": "Sort providers by response time, prioritizing the provider with the lowest latency",
+			"oauthCredentialsPath": "OAuth Credentials Path (optional)",
+			"oauthPathPlaceholder": "Default: ~/.gemini/oauth_creds.json",
+			"oauthPathDesc": "Path to the OAuth credentials file. Leave empty to use the default location (~/.gemini/oauth_creds.json).",
+			"discoveredProjectId": "Discovered Project ID",
+			"projectIdAutoDesc": "This project ID was automatically discovered from your OAuth credentials.",
+			"geminiCliDesc": "This provider uses OAuth authentication from the Gemini CLI tool and does not require API keys. If you haven't authenticated yet, please run",
+			"geminiCliSetup": "Gemini CLI Setup Instructions",
+			"importantRequirements": "Important Requirements",
+			"geminiCliRequirements": "• First, you need to install the **Gemini CLI tool**\n• Then, run **gemini** in your terminal and make sure you **Log in with Google**\n• Only works with **personal Google accounts** (not Google Workspace accounts)\n• Does not use API keys - authentication is handled via OAuth\n• Requires the Gemini CLI tool to be installed and authenticated first",
+			"freeTierAccess": "✓ Free tier access via OAuth authentication",
+			"complexPromptsNote": "Note: Codee uses complex prompts and works best with Claude models. Less capable models may not work as expected."
 		}
 	},
 	"chat": {
@@ -198,11 +229,23 @@
 	"advanced": {
 		"title": "Advanced-abilities",
 		"memorybank": {
-			"title": "Memory bank",
+			"title": "Memory Bank",
 			"init": "Initialize",
 			"update": "Update",
 			"remember": "Remember",
 			"description": "The Memory Bank is a structured documentation system that allows Codee to maintain context across sessions. It transforms Codee from a stateless assistant into a persistent development partner that can effectively \"remember\" your project details over time."
+		},
+		"codeIndex": {
+			"title": "Code Index",
+			"description": "Provides intelligent code indexing and analysis capabilities. It enables Large Language Models to interact with your code repositories, offering real-time insights and navigation through complex codebases.Please update the index promptly after code changes.",
+			"refresh": "Refresh Index",
+			"disabled": "Code index disabled, please open it to use",
+			"error": "Code index error",
+			"downloadError": "Download error, please download manually and place in the specified location, ",
+			"downloadErrorClick": "click me",
+			"downloadErrorDownload": " to download",
+			"downloadErrorOpen": " to open the specified location",
+			"no_workspace": "No workspace open - please open a workspace folder to use code indexing"
 		}
 	},
 	"mcp": {
@@ -270,6 +313,6 @@
 		"newWorkflowFile": "New workflow file...",
 		"workflowNamePlaceholder": "workflow-name (.md, .txt, or no extension)",
 		"noWorkflowsFound": "No rules found",
-		"workflowsDescription": "Workflows allow you to define a series of steps to guide Cline through a repetitive set of tasks, such as deploying a service or submitting a PR. To invoke a workflow, type /workflow-name in the chat."
+		"workflowsDescription": "Workflows allow you to define a series of steps to guide Codee through a repetitive set of tasks, such as deploying a service or submitting a PR. To invoke a workflow, type /workflow-name in the chat."
 	}
 }

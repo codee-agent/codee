@@ -1,13 +1,16 @@
+import { useExtensionState } from "@/context/ExtensionStateContext"
+import { McpServiceClient } from "@/services/grpc-client"
+import { vscode } from "@/utils/vscode"
+import { McpViewTab } from "@shared/mcp"
+import { EmptyRequest } from "@shared/proto/common"
 import { VSCodeButton } from "@vscode/webview-ui-toolkit/react"
 import { useEffect, useState } from "react"
 import styled from "styled-components"
-import { useExtensionState } from "@/context/ExtensionStateContext"
-import { vscode } from "@/utils/vscode"
-import { McpServiceClient } from "@/services/grpc-client"
 import AddRemoteServerForm from "./tabs/add-server/AddRemoteServerForm"
-import McpMarketplaceView from "./tabs/marketplace/McpMarketplaceView"
 import InstalledServersView from "./tabs/installed/InstalledServersView"
-import { McpViewTab } from "@shared/mcp"
+import McpMarketplaceView from "./tabs/marketplace/McpMarketplaceView"
+import { convertProtoMcpServersToMcpServers } from "@shared/proto-conversions/mcp/mcp-server-conversion"
+import { McpServers } from "@shared/proto/mcp"
 import { useTranslation } from "react-i18next"
 
 type McpViewProps = {
@@ -16,7 +19,7 @@ type McpViewProps = {
 }
 
 const McpConfigurationView = ({ onDone, initialTab }: McpViewProps) => {
-	const { mcpMarketplaceEnabled } = useExtensionState()
+	const { mcpMarketplaceEnabled, setMcpServers } = useExtensionState()
 	const [activeTab, setActiveTab] = useState<McpViewTab>(initialTab || (mcpMarketplaceEnabled ? "marketplace" : "installed"))
 	const { t } = useTranslation()
 
@@ -36,16 +39,24 @@ const McpConfigurationView = ({ onDone, initialTab }: McpViewProps) => {
 
 	useEffect(() => {
 		if (mcpMarketplaceEnabled) {
-			McpServiceClient.refreshMcpMarketplace({})
+			McpServiceClient.refreshMcpMarketplace(EmptyRequest.create({}))
 				.then((response) => {
-					// Types are structurally identical, use response directly
 					setMcpMarketplaceCatalog(response)
 				})
 				.catch((error) => {
 					console.error("Error refreshing MCP marketplace:", error)
 				})
 
-			vscode.postMessage({ type: "fetchLatestMcpServersFromHub" })
+			McpServiceClient.getLatestMcpServers(EmptyRequest.create({}))
+				.then((response: McpServers) => {
+					if (response.mcpServers) {
+						const mcpServers = convertProtoMcpServersToMcpServers(response.mcpServers)
+						setMcpServers(mcpServers)
+					}
+				})
+				.catch((error) => {
+					console.error("Failed to fetch MCP servers:", error)
+				})
 		}
 	}, [mcpMarketplaceEnabled])
 
@@ -104,19 +115,21 @@ const McpConfigurationView = ({ onDone, initialTab }: McpViewProps) => {
 	)
 }
 
-const StyledTabButton = styled.button<{ isActive: boolean }>`
+const StyledTabButton = styled.button<{ isActive: boolean; disabled?: boolean }>`
 	background: none;
 	border: none;
 	border-bottom: 2px solid ${(props) => (props.isActive ? "var(--vscode-foreground)" : "transparent")};
 	color: ${(props) => (props.isActive ? "var(--vscode-foreground)" : "var(--vscode-descriptionForeground)")};
 	padding: 8px 16px;
-	cursor: pointer;
+	cursor: ${(props) => (props.disabled ? "not-allowed" : "pointer")};
 	font-size: 13px;
 	margin-bottom: -1px;
 	font-family: inherit;
+	opacity: ${(props) => (props.disabled ? 0.6 : 1)};
+	pointer-events: ${(props) => (props.disabled ? "none" : "auto")};
 
 	&:hover {
-		color: var(--vscode-foreground);
+		color: ${(props) => (props.disabled ? "var(--vscode-descriptionForeground)" : "var(--vscode-foreground)")};
 	}
 `
 
@@ -124,12 +137,16 @@ export const TabButton = ({
 	children,
 	isActive,
 	onClick,
+	disabled,
+	style,
 }: {
 	children: React.ReactNode
 	isActive: boolean
 	onClick: () => void
+	disabled?: boolean
+	style?: React.CSSProperties
 }) => (
-	<StyledTabButton isActive={isActive} onClick={onClick}>
+	<StyledTabButton isActive={isActive} onClick={onClick} disabled={disabled} style={style}>
 		{children}
 	</StyledTabButton>
 )

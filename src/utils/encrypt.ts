@@ -62,9 +62,9 @@ export class EncryptUtil {
 	}
 }
 
-// 工具函数示例
+// 工具函数示例//huqb
 export function getPluginVersion() {
-	const extension = vscode.extensions.getExtension("Codee.codee")
-	console.log("@@@,extension:" + extension)
-	return extension?.packageJSON.version || "unknown"
+  const extension = vscode.extensions.getExtension('Codee.codee');
+  console.log("@@@,extension:"+extension)
+  return extension?.packageJSON.version || 'unknown';
 }

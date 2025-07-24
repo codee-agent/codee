@@ -5,8 +5,10 @@ import { validateApiConfiguration } from "@/utils/validate"
 import { vscode } from "@/utils/vscode"
 import ApiOptions from "@/components/settings/ApiOptions"
 import ClineLogoWhite from "@/assets/ClineLogoWhite"
-import { AccountServiceClient } from "@/services/grpc-client"
+import { AccountServiceClient, ModelsServiceClient } from "@/services/grpc-client"
 import { EmptyRequest } from "@shared/proto/common"
+import { UpdateApiConfigurationRequest } from "@shared/proto/models"
+import { convertApiConfigurationToProto } from "@shared/proto-conversions/models/api-configuration-conversion"
 import { useTranslation, Trans } from "react-i18next"
 
 const WelcomeView = memo(() => {
@@ -23,8 +25,18 @@ const WelcomeView = memo(() => {
 		)
 	}
 
-	const handleSubmit = () => {
-		vscode.postMessage({ type: "apiConfiguration", apiConfiguration })
+	const handleSubmit = async () => {
+		if (apiConfiguration) {
+			try {
+				await ModelsServiceClient.updateApiConfigurationProto(
+					UpdateApiConfigurationRequest.create({
+						apiConfiguration: convertApiConfigurationToProto(apiConfiguration),
+					}),
+				)
+			} catch (error) {
+				console.error("Failed to update API configuration:", error)
+			}
+		}
 	}
 
 	useEffect(() => {
@@ -52,9 +64,9 @@ const WelcomeView = memo(() => {
 					/>
 				</p>
 
-				{/*<p className="text-[var(--vscode-descriptionForeground)]">{t("chat.welcome.signupText")}</p>
+				{/* <p className="text-[var(--vscode-descriptionForeground)]">{t("chat.welcome.signupText")}</p>
 
-				 <VSCodeButton appearance="primary" onClick={handleLogin} className="w-full mt-1">
+				<VSCodeButton appearance="primary" onClick={handleLogin} className="w-full mt-1">
 					{t('chat.welcome.getStarted')}
 				</VSCodeButton> */}
 

@@ -121,7 +121,7 @@ export async function spawnVSCode(workspacePath: string, vsixPath?: string): Pro
 		// Show the activity bar and sidebar
 		"workbench.activityBar.visible": true,
 		"workbench.sideBar.visible": true,
-		"workbench.view.extension.beandao.codee-ActivityBar.visible": true,
+		"workbench.view.extension.codee-ActivityBar.visible": true,
 		"workbench.view.alwaysShowHeaderActions": true,
 		"workbench.editor.openSideBySideDirection": "right",
 
@@ -145,13 +145,13 @@ export async function spawnVSCode(workspacePath: string, vsixPath?: string): Pro
 	const keybindings = [
 		{
 			key: "alt+c",
-			command: "workbench.view.extension.beandao.codee-ActivityBar",
-			when: "viewContainer.workbench.view.extension.beandao.codee-ActivityBar.enabled",
+			command: "workbench.view.extension.codee-ActivityBar",
+			when: "viewContainer.workbench.view.extension.codee-ActivityBar.enabled",
 		},
 		{
 			key: "alt+shift+c",
 			command: "codee.openInNewTab",
-			when: "viewContainer.workbench.view.extension.beandao.codee-ActivityBar.enabled",
+			when: "viewContainer.workbench.view.extension.codee-ActivityBar.enabled",
 		},
 	]
 	fs.writeFileSync(keybindingsPath, JSON.stringify(keybindings, null, 2))
@@ -174,7 +174,7 @@ export async function spawnVSCode(workspacePath: string, vsixPath?: string): Pro
 		"Codee.codee",
 		// Run a command on startup to open Cline
 		"--command",
-		"workbench.view.extension.beandao.codee-ActivityBar",
+		"workbench.view.extension.codee-ActivityBar",
 		// Additional flags to help with extension activation
 		"--disable-gpu=false",
 		"--max-memory=4096",
@@ -186,7 +186,7 @@ export async function spawnVSCode(workspacePath: string, vsixPath?: string): Pro
 		// This script will be executed when VS Code starts
 		setTimeout(() => {
 			// Try to open Cline in the sidebar
-			require('vscode').commands.executeCommand('workbench.view.extension.beandao.codee-ActivityBar');
+			require('vscode').commands.executeCommand('workbench.view.extension.codee-ActivityBar');
 			
 			// Also try to open Cline in a tab as a fallback
 			setTimeout(() => {
@@ -283,7 +283,7 @@ export async function spawnVSCode(workspacePath: string, vsixPath?: string): Pro
 						
 						// Show the Cline sidebar
 						console.log('Opening Cline sidebar...');
-						await vscode.commands.executeCommand('workbench.view.extension.beandao.codee-ActivityBar');
+						await vscode.commands.executeCommand('workbench.view.extension.codee-ActivityBar');
 						
 						// Wait a moment for the sidebar to initialize
 						await new Promise(resolve => setTimeout(resolve, 2000));

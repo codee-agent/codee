@@ -1,17 +1,19 @@
+import { CODE_BLOCK_BG_COLOR } from "@/components/common/CodeBlock"
+import { useExtensionState } from "@/context/ExtensionStateContext"
+import { StateServiceClient } from "@/services/grpc-client"
+import { openRouterDefaultModelId } from "@shared/api"
+import { StringRequest } from "@shared/proto/common"
 import { VSCodeLink, VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 import Fuse from "fuse.js"
 import React, { KeyboardEvent, memo, useEffect, useMemo, useRef, useState } from "react"
 import { useRemark } from "react-remark"
 import { useMount } from "react-use"
 import styled from "styled-components"
-import { openRouterDefaultModelId } from "@shared/api"
-import { useExtensionState } from "@/context/ExtensionStateContext"
-import { ModelsServiceClient, StateServiceClient } from "@/services/grpc-client"
 import { highlight } from "../history/HistoryView"
-import { ModelInfoView, normalizeApiConfiguration } from "./ApiOptions"
-import { CODE_BLOCK_BG_COLOR } from "@/components/common/CodeBlock"
-import ThinkingBudgetSlider from "./ThinkingBudgetSlider"
+import { ModelInfoView } from "./ApiOptions"
+import { normalizeApiConfiguration } from "./utils/providerUtils"
 import FeaturedModelCard from "./FeaturedModelCard"
+import ThinkingBudgetSlider from "./ThinkingBudgetSlider"
 
 // Star icon for favorites
 const StarIcon = ({ isFavorite, onClick }: { isFavorite: boolean; onClick: (e: React.MouseEvent) => void }) => {
@@ -38,27 +40,27 @@ export interface OpenRouterModelPickerProps {
 	isPopup?: boolean
 }
 
-// Featured models for Codee provider
+// Featured models for codee provider
 const featuredModels = [
 	{
 		id: "anthropic/claude-sonnet-4",
-		description: "Best model for agentic coding",
+		description: "Recommended for agentic coding in Cline",
 		label: "Best",
 	},
 	{
-		id: "google/gemini-2.5-pro-preview",
+		id: "google/gemini-2.5-pro",
 		description: "Large 1M context window, great value",
 		label: "Trending",
 	},
 	{
-		id: "openai/gpt-4.1",
-		description: "1M context window, blazing fast",
-		label: "New",
+		id: "x-ai/grok-3",
+		description: "Latest flagship model from xAI, free for now!",
+		label: "Free",
 	},
 ]
 
 const OpenRouterModelPicker: React.FC<OpenRouterModelPickerProps> = ({ isPopup }) => {
-	const { apiConfiguration, setApiConfiguration, openRouterModels } = useExtensionState()
+	const { apiConfiguration, setApiConfiguration, openRouterModels, refreshOpenRouterModels } = useExtensionState()
 	const [searchTerm, setSearchTerm] = useState(apiConfiguration?.openRouterModelId || openRouterDefaultModelId)
 	const [isDropdownVisible, setIsDropdownVisible] = useState(false)
 	const [selectedIndex, setSelectedIndex] = useState(-1)
@@ -83,11 +85,7 @@ const OpenRouterModelPicker: React.FC<OpenRouterModelPickerProps> = ({ isPopup }
 		return normalizeApiConfiguration(apiConfiguration)
 	}, [apiConfiguration])
 
-	useMount(() => {
-		ModelsServiceClient.refreshOpenRouterModels({}).catch((error: Error) =>
-			console.error("Failed to refresh OpenRouter models:", error),
-		)
-	})
+	useMount(refreshOpenRouterModels)
 
 	useEffect(() => {
 		const handleClickOutside = (event: MouseEvent) => {
@@ -293,9 +291,9 @@ const OpenRouterModelPicker: React.FC<OpenRouterModelPickerProps> = ({ isPopup }
 												isFavorite={isFavorite}
 												onClick={(e) => {
 													e.stopPropagation()
-													StateServiceClient.toggleFavoriteModel({ value: item.id }).catch((error) =>
-														console.error("Failed to toggle favorite model:", error),
-													)
+													StateServiceClient.toggleFavoriteModel(
+														StringRequest.create({ value: item.id }),
+													).catch((error) => console.error("Failed to toggle favorite model:", error))
 												}}
 											/>
 										</div>
@@ -333,7 +331,7 @@ const OpenRouterModelPicker: React.FC<OpenRouterModelPickerProps> = ({ isPopup }
 						<VSCodeLink style={{ display: "inline", fontSize: "inherit" }} href="https://openrouter.ai/models">
 							OpenRouter.
 						</VSCodeLink>
-						If you're unsure which model to choose, Codee works best with{" "}
+						If you're unsure which model to choose, codee works best with{" "}
 						<VSCodeLink
 							style={{ display: "inline", fontSize: "inherit" }}
 							onClick={() => handleModelChange("anthropic/claude-sonnet-4")}>
