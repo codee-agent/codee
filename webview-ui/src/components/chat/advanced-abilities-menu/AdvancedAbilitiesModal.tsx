@@ -57,20 +57,20 @@ const AdvancedAbilitiesModal: React.FC<AdvancedAbilitiesModalProps> = ({
 	useEffect(() => {
 		if (isVisible) {
 			vscode.postMessage({
-				type: "getMemoryBank",
-			})
-		}
-	}, [isVisible])
-	useEffect(() => {
-		// Start polling for code index state
-		const interval = setInterval(() => {
-			vscode.postMessage({
 				type: "getCodeIndexState",
 			})
-		}, 2000)
+			vscode.postMessage({
+				type: "getMemoryBank",
+			})
+			const interval = setInterval(() => {
+				vscode.postMessage({
+					type: "getCodeIndexState",
+				})
+			}, 2000)
 
-		return () => clearInterval(interval)
-	}, [])
+			return () => clearInterval(interval)
+		}
+	}, [isVisible])
 
 	const handleMessage = useCallback((event: MessageEvent) => {
 		const message: ExtensionMessage = event.data
