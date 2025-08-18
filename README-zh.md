@@ -76,15 +76,15 @@ Codee去访问网关获取服务。
 <summary>本地开发说明</summary>
 
 1. 克隆仓库 ：
-        ```bash
+        ```
         git clone https://github.com/codee-agent/codee
         ```
 2. 在 VSCode 中打开项目：
-        ```bash
+        ```
         code codee
         ```
 3. 安装扩展和 webview-gui 的必要依赖：
-        ```bash
+        ```
         npm run install:all
         ```
 4. 按 `F5`（或 `运行`->`开始调试`）启动以打开一个加载了扩展的新 VSCode 窗口。（如果你在构建项目时遇到问题，可能需要安装 [esbuild problem matchers 扩展](https://marketplace.visualstudio.com/items?itemName=connor4312.esbuild-problem-matchers)）
