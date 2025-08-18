@@ -73,7 +73,7 @@ To contribute to the project,you need to comply with the [Contributor Covenant](
 
 1. Clone the repository:
         ```bash
-        git clone https://code.y5ops.com/coders/codee
+        git clone https://github.com/codee-agent/codee
         ```
 2. Open the project in VSCode:
         ```bash
