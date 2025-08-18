@@ -72,15 +72,15 @@ To contribute to the project,you need to comply with the [Contributor Covenant](
 <summary>Local Development Instructions</summary>
 
 1. Clone the repository:
-        ```bash
+        ```
         git clone https://github.com/codee-agent/codee
         ```
 2. Open the project in VSCode:
-        ```bash
+        ```
         code codee
         ```
 3. Install the extension and necessary dependencies for webview-gui:
-        ```bash
+        ```
         npm run install:all
         ```
 4. Press `F5` (or `Run` -> `Start Debugging`) to launch a new VSCode window with the extension loaded. (If you encounter issues during the build, you may need to install the [esbuild problem matchers extension](https://marketplace.visualstudio.com/items?itemName=connor4312.esbuild-problem-matchers).)
