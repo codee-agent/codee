@@ -77,7 +77,7 @@ Codee去访问网关获取服务。
 
 1. 克隆仓库 ：
         ```bash
-        git clone https://code.y5ops.com/coders/codee
+        git clone https://github.com/codee-agent/codee
         ```
 2. 在 VSCode 中打开项目：
         ```bash
