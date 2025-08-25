@@ -324,6 +324,7 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 		const [searchLoading, setSearchLoading] = useState(false)
 		const [, metaKeyChar] = useMetaKeyDetection(platform)
 		const [isEnhancing, setIsEnhancing] = useState(false) //wangyuan
+		const sendButtonRef = useRef<HTMLDivElement>(null)
 
 		// Add a ref to track previous menu state
 		const prevShowModelSelector = useRef(showModelSelector)
@@ -368,15 +369,16 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 				case "memoryBankResult": {
 					const initPrompt =
 						message.text == "init"
-							? "initialize memory bank"
+							? "Please carefully read the relevant introduction documents of this project then initialize memory bank"
 							: message.text == "update"
 								? "update memory bank"
 								: "follow your custom instructions"
 					setInputValue(initPrompt)
-					if (!sendingDisabled) {
-						setIsTextAreaFocused(false)
-						onSend(initPrompt)
-					}
+					setTimeout(() => {
+						if (!sendingDisabled && sendButtonRef.current) {
+							sendButtonRef.current.click()
+						}
+					}, 0)
 					break
 				}
 			}
@@ -1675,7 +1677,7 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 									fontSize: 16.5,
 								}}
 							/> */}
-							
+
 							<div
 								data-testid="enhance-button"
 								className={`input-icon-button ${
@@ -1689,6 +1691,7 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 							/>
 							<div
 								data-testid="send-button"
+								ref={sendButtonRef}
 								className={`input-icon-button ${sendingDisabled ? "disabled" : ""} codicon codicon-send`}
 								onClick={() => {
 									if (!sendingDisabled) {

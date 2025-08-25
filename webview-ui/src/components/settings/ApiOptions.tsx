@@ -173,18 +173,6 @@ const ApiOptions = ({
 	}
 
 	const { selectedProvider, selectedModelId, selectedModelInfo } = useMemo(() => {
-		//huqb
-		//初始化一个openai的配置
-		if (apiConfiguration?.apiProvider == "openai" && !apiConfiguration.openAiBaseUrl) {
-			setApiConfiguration({
-				...apiConfiguration,
-				apiProvider: VALUE_API_PROVIDER,
-				openAiBaseUrl: VALUE_OPENAI_BASE_URL,
-				openAiApiKey: VALUE_OPENAI_API_KEY,
-				openAiModelId: VALUE_OPENAI_MODEL_ID,
-			})
-			console.log("@@@setApiConfiguration,1")
-		}
 		return normalizeApiConfiguration(apiConfiguration)
 	}, [apiConfiguration])
 
