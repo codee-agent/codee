@@ -22,8 +22,19 @@ export function isGPT5ModelFamily(id: string): boolean {
 	return modelId.includes("gpt-5") || modelId.includes("gpt5")
 }
 
+export function isGoodFamily(id: string): boolean {
+	const modelId = id.toLowerCase()
+	return modelId.includes("deepseek") || modelId.includes("qwen3") || modelId.includes("kimi-k2") || modelId.includes("glm-4")
+}
+
 export function isNextGenModelFamily(id: string): boolean {
-	return isClaude4ModelFamily(id) || isGemini2dot5ModelFamily(id) || isGrok4ModelFamily(id) || isGPT5ModelFamily(id)
+	return (
+		isClaude4ModelFamily(id) ||
+		isGemini2dot5ModelFamily(id) ||
+		isGrok4ModelFamily(id) ||
+		isGPT5ModelFamily(id) ||
+		isGoodFamily(id)
+	)
 }
 
 export function isLocalModelFamily(providerId: string): boolean {

@@ -57,7 +57,7 @@ const ErrorRow = memo(({ message, errorType, apiRequestFailedMessage, apiReqStre
 					// Default error display
 					return (
 						<p className="m-0 whitespace-pre-wrap text-[var(--vscode-errorForeground)] wrap-anywhere">
-							{clineErrorMessage}
+							{/* {clineErrorMessage}
 							{requestId && <div>Request ID: {requestId}</div>}
 							{clineErrorMessage?.toLowerCase()?.includes("powershell") && (
 								<>
@@ -76,7 +76,6 @@ const ErrorRow = memo(({ message, errorType, apiRequestFailedMessage, apiReqStre
 								<>
 									<br />
 									<br />
-									{/* The user is signed in or not using Codee provider */}
 									{clineUser && !isClineProvider ? (
 										<span className="mb-4 text-[var(--vscode-descriptionForeground)]">
 											(Click "Retry" below)
@@ -87,7 +86,7 @@ const ErrorRow = memo(({ message, errorType, apiRequestFailedMessage, apiReqStre
 										</VSCodeButton>
 									)}
 								</>
-							)}
+							)} */}
 						</p>
 					)
 				}
