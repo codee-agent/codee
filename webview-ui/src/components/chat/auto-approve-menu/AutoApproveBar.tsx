@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from "react"
+import { useTranslation } from "react-i18next"
 import { CODE_BLOCK_BG_COLOR } from "@/components/common/CodeBlock"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { useAutoApproveActions } from "@/hooks/useAutoApproveActions"
@@ -6,7 +7,6 @@ import { getAsVar, VSC_TITLEBAR_INACTIVE_FOREGROUND } from "@/utils/vscStyles"
 import AutoApproveMenuItem from "./AutoApproveMenuItem"
 import AutoApproveModal from "./AutoApproveModal"
 import { ACTION_METADATA, NOTIFICATIONS_SETTING } from "./constants"
-import { useTranslation } from "react-i18next"
 
 interface AutoApproveBarProps {
 	style?: React.CSSProperties
@@ -51,7 +51,9 @@ const AutoApproveBar = ({ style }: AutoApproveBarProps) => {
 			return ACTION_METADATA.flatMap((a) => [a, a.subAction]).find((a) => a?.id === action)
 		})
 
-		const minusFavorites = enabledActions.filter((action) => !favorites.includes(action?.id ?? "") && action?.shortName)
+		const minusFavorites = enabledActions.filter(
+			(action) => !favorites.includes(action?.id ?? "") && t(action?.shortName ?? ""),
+		)
 
 		if (notificationsEnabled) {
 			minusFavorites.push(NOTIFICATIONS_SETTING)
@@ -66,7 +68,7 @@ const AutoApproveBar = ({ style }: AutoApproveBarProps) => {
 			) : null,
 			...minusFavorites.map((action, index) => (
 				<span className="text-[color:var(--vscode-foreground-muted)] opacity-60" key={action?.id}>
-					{action?.shortName}
+					{t(action?.shortName ?? "")}
 					{index < minusFavorites.length - 1 && ","}
 				</span>
 			)),
