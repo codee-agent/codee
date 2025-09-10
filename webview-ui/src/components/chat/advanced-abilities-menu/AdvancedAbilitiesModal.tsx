@@ -35,14 +35,20 @@ const AdvancedAbilitiesModal: React.FC<AdvancedAbilitiesModalProps> = ({
 		BusinessServiceClient.setMemoryBank(StringRequest.create({ value: text }))
 			.then(async (response) => {
 				if (response.value) {
-					const language = await BusinessServiceClient.getCurrentLanguage(EmptyRequest.create())
-					let initPrompt =
+					let language = "en"
+					try {
+						language = (await BusinessServiceClient.getCurrentLanguage(EmptyRequest.create())).value
+					} catch (e) {
+						console.log("getCurrentLanguage err: ", e)
+					}
+					const initPrompt =
 						response.value == "init"
-							? "Please carefully read the relevant introduction documents of this project then initialize memory bank"
+							? `Please carefully read the relevant introduction documents of this project then initialize memory bank, ${
+									language === "zh-CN" ? "请用中文生成文档" : "please use English"
+								}`
 							: response.value == "update"
 								? "update memory bank"
 								: "follow your custom instructions"
-					initPrompt += language.value === "zh-CN" ? ", 请用中文生成文档" : ", please use English"
 					setInputValue(initPrompt)
 					const sendButton = document.querySelector('[data-testid="send-button"]') as HTMLElement | null
 					setTimeout(() => {

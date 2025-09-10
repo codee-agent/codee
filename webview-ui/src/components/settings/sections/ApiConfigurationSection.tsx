@@ -30,6 +30,7 @@ const ApiConfigurationSection = ({ renderSectionHeader }: ApiConfigurationSectio
 			enable: false,
 		},
 	})
+	const [isLoading, setIsloading] = useState(true)
 	const updateAutoComplete = () => {
 		const request = SetAutoCompletionRequest.create({
 			autoCompletion: {
@@ -69,9 +70,11 @@ const ApiConfigurationSection = ({ renderSectionHeader }: ApiConfigurationSectio
 							enable: response.autoCompletion.enable || false,
 						},
 					})
+					setIsloading(false)
 				}
 			})
 			.catch((error) => {
+				setIsloading(false)
 				console.error("Failed to get auto-completion settings:", error)
 			})
 		StateServiceClient.updateSettings(
@@ -148,92 +151,96 @@ const ApiConfigurationSection = ({ renderSectionHeader }: ApiConfigurationSectio
 					</p>
 				</div> */}
 				{/* Autocomplete Settings Section */}
-				<div className="border border-solid border-[var(--vscode-panel-border)] rounded-md p-[10px] mb-5 bg-[var(--vscode-panel-background)] [&_vscode-dropdown]:w-full [&_vscode-text-field]:w-full">
-					<details
-						onToggle={(e) => {
-							if (e.currentTarget.open) {
-							}
-						}}>
-						<summary className="cursor-pointer font-medium">{t("settings.autocomplete.title")}</summary>
-						<div className="mt-3 space-y-3">
-							<VSCodeDropdown>
-								<VSCodeOption value="Openai Compatible">OpenAI Compatible</VSCodeOption>
-							</VSCodeDropdown>
+				{isLoading ? (
+					<div>Loading...</div>
+				) : (
+					<div className="border border-solid border-[var(--vscode-panel-border)] rounded-md p-[10px] mb-5 bg-[var(--vscode-panel-background)] [&_vscode-dropdown]:w-full [&_vscode-text-field]:w-full">
+						<details
+							onToggle={(e) => {
+								if (e.currentTarget.open) {
+								}
+							}}>
+							<summary className="cursor-pointer font-medium">{t("settings.autocomplete.title")}</summary>
+							<div className="mt-3 space-y-3">
+								<VSCodeDropdown>
+									<VSCodeOption value="Openai Compatible">OpenAI Compatible</VSCodeOption>
+								</VSCodeDropdown>
 
-							<VSCodeTextField
-								onInput={(e: any) => {
-									// if (e.target.value !== autocompleteConfig.autocomplete.apiBase) {
-									// 	setHasUnsavedChanges(true) //huqb
-									// }
-									setAutocompleteConfig({
-										...autocompleteConfig,
-										autocomplete: {
-											...autocompleteConfig.autocomplete,
-											apiBase: e.target.value,
-										},
-									})
-								}}
-								placeholder={t("settings.autocomplete.apiBase")}
-								value={autocompleteConfig.autocomplete.apiBase}>
-								{t("settings.autocomplete.apiBase")}
-							</VSCodeTextField>
+								<VSCodeTextField
+									onInput={(e: any) => {
+										// if (e.target.value !== autocompleteConfig.autocomplete.apiBase) {
+										// 	setHasUnsavedChanges(true) //huqb
+										// }
+										setAutocompleteConfig({
+											...autocompleteConfig,
+											autocomplete: {
+												...autocompleteConfig.autocomplete,
+												apiBase: e.target.value,
+											},
+										})
+									}}
+									placeholder={t("settings.autocomplete.apiBase")}
+									value={autocompleteConfig.autocomplete.apiBase}>
+									{t("settings.autocomplete.apiBase")}
+								</VSCodeTextField>
 
-							<VSCodeTextField
-								onInput={(e: any) => {
-									// if (e.target.value !== autocompleteConfig.autocomplete.apiKey) {
-									// 	setHasUnsavedChanges(true) //huqb
-									// }
-									setAutocompleteConfig({
-										...autocompleteConfig,
-										autocomplete: {
-											...autocompleteConfig.autocomplete,
-											apiKey: e.target.value,
-										},
-									})
-								}}
-								placeholder={t("settings.autocomplete.apiKey")}
-								type="password"
-								value={autocompleteConfig.autocomplete.apiKey}>
-								{t("settings.autocomplete.apiKey")}
-							</VSCodeTextField>
+								<VSCodeTextField
+									onInput={(e: any) => {
+										// if (e.target.value !== autocompleteConfig.autocomplete.apiKey) {
+										// 	setHasUnsavedChanges(true) //huqb
+										// }
+										setAutocompleteConfig({
+											...autocompleteConfig,
+											autocomplete: {
+												...autocompleteConfig.autocomplete,
+												apiKey: e.target.value,
+											},
+										})
+									}}
+									placeholder={t("settings.autocomplete.apiKey")}
+									type="password"
+									value={autocompleteConfig.autocomplete.apiKey}>
+									{t("settings.autocomplete.apiKey")}
+								</VSCodeTextField>
 
-							<VSCodeTextField
-								onInput={(e: any) => {
-									// if (e.target.value !== autocompleteConfig.autocomplete.model) {
-									// 	setHasUnsavedChanges(true) //huqb
-									// }
-									setAutocompleteConfig({
-										...autocompleteConfig,
-										autocomplete: {
-											...autocompleteConfig.autocomplete,
-											model: e.target.value,
-										},
-									})
-								}}
-								placeholder={t("settings.autocomplete.model")}
-								value={autocompleteConfig.autocomplete.model}>
-								{t("settings.autocomplete.model")}
-							</VSCodeTextField>
+								<VSCodeTextField
+									onInput={(e: any) => {
+										// if (e.target.value !== autocompleteConfig.autocomplete.model) {
+										// 	setHasUnsavedChanges(true) //huqb
+										// }
+										setAutocompleteConfig({
+											...autocompleteConfig,
+											autocomplete: {
+												...autocompleteConfig.autocomplete,
+												model: e.target.value,
+											},
+										})
+									}}
+									placeholder={t("settings.autocomplete.model")}
+									value={autocompleteConfig.autocomplete.model}>
+									{t("settings.autocomplete.model")}
+								</VSCodeTextField>
 
-							<VSCodeCheckbox
-								checked={autocompleteConfig.autocomplete.enable}
-								onChange={(e: any) => {
-									// if (e.target.checked !== autocompleteConfig.autocomplete.enable) {
-									// 	setHasUnsavedChanges(true) //huqb
-									// }
-									setAutocompleteConfig({
-										...autocompleteConfig,
-										autocomplete: {
-											...autocompleteConfig.autocomplete,
-											enable: e.target.checked,
-										},
-									})
-								}}>
-								{t("settings.autocomplete.enable")}
-							</VSCodeCheckbox>
-						</div>
-					</details>
-				</div>
+								<VSCodeCheckbox
+									checked={autocompleteConfig.autocomplete.enable}
+									onChange={(e: any) => {
+										// if (e.target.checked !== autocompleteConfig.autocomplete.enable) {
+										// 	setHasUnsavedChanges(true) //huqb
+										// }
+										setAutocompleteConfig({
+											...autocompleteConfig,
+											autocomplete: {
+												...autocompleteConfig.autocomplete,
+												enable: e.target.checked,
+											},
+										})
+									}}>
+									{t("settings.autocomplete.enable")}
+								</VSCodeCheckbox>
+							</div>
+						</details>
+					</div>
+				)}
 			</Section>
 		</div>
 	)
