@@ -6,13 +6,19 @@
 		"language": {
 			"title": "语言设置"
 		},
+		"checkupdate": {
+			"text": "新版本可用",
+			"action": "更新",
+			"checking": "检查中"
+		},
 		"autocomplete": {
 			"title": "代码补全设置",
 			"provider": "提供商",
 			"apiBase": "服务器URL",
 			"apiKey": "API密钥",
 			"model": "模型",
-			"enable": "启用代码补全"
+			"enable": "启用代码补全",
+			"disableTitle": "未登录状态下不可用"
 		},
 		"other": {
 			"title": "其他设置",
@@ -154,8 +160,8 @@
 			"description": "你需要给我提供一份详细的软件开发需求描述，我可以将需求拆分成多个步骤来执行。我可以查看文件，修改文件，写文件，执行命令等。我甚至可以使用 MCP 创建新工具并扩展自己的能力。",
 			"claudeLink": "Claude 3.7 Sonnet",
 			"claudeLinkText": "Claude 3.7 Sonnet",
-			"signupText": "注册账号免费开始使用，或者使用提供访问 Claude 3.7 Sonnet 等模型的 API 密钥。",
-			"getStarted": "免费开始使用",
+			"signupText": "注册账号免费开始使用，或者设置自己的 deepseek-v3 等模型的 API 密钥。",
+			"getStarted": "登录免费使用",
 			"useOwnApiKey": "使用您自己的 API 密钥",
 			"letsGo": "开始使用！"
 		}
@@ -290,7 +296,22 @@
 	"account": {
 		"title": "账户",
 		"done": "完成",
-		"underConstruction": "功能建设中..."
+		"underConstruction": "功能建设中...",
+		"dashboard": "仪表板",
+		"logout": "退出登录",
+		"loggedIn": "已登录",
+		"currentBalance": "当前余额",
+		"historyConsumption": "历史消耗",
+		"usageCount": "使用次数",
+		"loading": "加载中...",
+		"currencySymbol": "$",
+		"addCredits": "添加积分",
+		"signUpMessage": "注册账号以获取最新模型、查看使用情况和积分的账单面板，以及更多即将推出的功能。",
+		"signUpButton": "使用 Codee 登录",
+		"agreementPart1": "继续即表示您同意",
+		"termsOfService": "服务条款",
+		"agreementPart2": "和",
+		"privacyPolicy": "隐私政策。"
 	},
 	"CodeeRules": {
 		"manageRules": "管理 Codee 规则和工作流",

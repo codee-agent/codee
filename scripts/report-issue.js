@@ -14,7 +14,7 @@ const getClineVersion = () => {
 		const extensions = execSync("code --list-extensions --show-versions").toString()
 		const clineMatch = extensions.match(/claude-dev@(\d+\.\d+\.\d+)/)
 		return clineMatch ? clineMatch[1] : "Not installed"
-	} catch (err) {
+	} catch (_err) {
 		return "Error getting version"
 	}
 }
@@ -32,7 +32,7 @@ const collectSystemInfo = () => {
 			cpuInfo = execSync("lscpu").toString().split("\n").slice(0, 5).join("\n")
 			memoryInfo = execSync("free -h").toString()
 		}
-	} catch (err) {
+	} catch (_err) {
 		// Fallback for unsupported systems
 		cpuInfo = Array.from(new Set(os.cpus().map((c) => c.model))).join("\n")
 		memoryInfo = `${Math.round(os.totalmem() / 1e9)} GB RAM`
@@ -44,7 +44,7 @@ const collectSystemInfo = () => {
 		os: `${os.arch()}; ${os.version()}`,
 		nodeVersion: execSync("node -v").toString().trim(),
 		npmVersion: execSync("npm -v").toString().trim(),
-		codeeVersion: getClineVersion(),
+		clineVersion: getClineVersion(),
 	}
 }
 
@@ -52,7 +52,7 @@ const checkGitHubAuth = async () => {
 	try {
 		execSync("gh auth status", { stdio: "ignore" })
 		return true
-	} catch (err) {
+	} catch (_err) {
 		console.log("\nGitHub authentication required.")
 		console.log("\nPlease run the following command in your terminal to authenticate:")
 		console.log("\n  gh auth login\n")
@@ -66,7 +66,7 @@ const createIssueUrl = (systemInfo, issueTitle) => {
 		`https://github.com/cline/cline/issues/new?template=bug_report.yml` +
 		`&title=${issueTitle}` +
 		`&operating-system=${systemInfo.os}` +
-		`&cline-version=${systemInfo.codeeVersion}` +
+		`&cline-version=${systemInfo.clineVersion}` +
 		`&system-info=${
 			`Node: ${systemInfo.nodeVersion}\n` +
 			`npm: ${systemInfo.npmVersion}\n` +
@@ -92,7 +92,7 @@ const openUrl = (url) => {
 				console.log("\nPlease open this URL in your browser:")
 				console.log(url)
 		}
-	} catch (err) {
+	} catch (_err) {
 		console.log("\nFailed to open URL automatically. Please open this URL in your browser:")
 		console.log(url)
 	}

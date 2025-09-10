@@ -1,13 +1,9 @@
-import { Controller } from ".."
-import { RuleFileRequest, RuleFile } from "@shared/proto/file"
-import { FileMethodHandler } from "./index"
-import { refreshClineRulesToggles } from "@core/context/instructions/user-instructions/cline-rules"
 import { deleteRuleFile as deleteRuleFileImpl } from "@core/context/instructions/user-instructions/rule-helpers"
-import { refreshExternalRulesToggles } from "@core/context/instructions/user-instructions/external-rules"
-import { refreshWorkflowToggles } from "@core/context/instructions/user-instructions/workflows"
-import * as vscode from "vscode"
+import { RuleFile, RuleFileRequest } from "@shared/proto/cline/file"
 import * as path from "path"
-import { cwd } from "@core/task"
+import { HostProvider } from "@/hosts/host-provider"
+import { ShowMessageType } from "@/shared/proto/host/window"
+import { Controller } from ".."
 
 /**
  * Deletes a rule file from either global or workspace rules directory
@@ -16,7 +12,7 @@ import { cwd } from "@core/task"
  * @returns Result with file path and display name
  * @throws Error if operation fails
  */
-export const deleteRuleFile: FileMethodHandler = async (controller: Controller, request: RuleFileRequest): Promise<RuleFile> => {
+export async function deleteRuleFile(controller: Controller, request: RuleFileRequest): Promise<RuleFile> {
 	if (
 		typeof request.isGlobal !== "boolean" ||
 		typeof request.rulePath !== "string" ||
@@ -32,7 +28,7 @@ export const deleteRuleFile: FileMethodHandler = async (controller: Controller, 
 		throw new Error("Missing or invalid parameters")
 	}
 
-	const result = await deleteRuleFileImpl(controller.context, request.rulePath, request.isGlobal, request.type)
+	const result = await deleteRuleFileImpl(controller, request.rulePath, request.isGlobal, request.type)
 
 	if (!result.success) {
 		throw new Error(result.message || "Failed to delete rule file")
@@ -48,7 +44,11 @@ export const deleteRuleFile: FileMethodHandler = async (controller: Controller, 
 
 	const fileTypeName = request.type === "workflow" ? "workflow" : "rule"
 
-	vscode.window.showInformationMessage(`${fileTypeName} file "${fileName}" deleted successfully`)
+	const message = `${fileTypeName} file "${fileName}" deleted successfully`
+	HostProvider.window.showMessage({
+		type: ShowMessageType.INFORMATION,
+		message,
+	})
 
 	return RuleFile.create({
 		filePath: request.rulePath,

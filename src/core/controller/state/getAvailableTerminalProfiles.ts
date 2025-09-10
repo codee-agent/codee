@@ -1,14 +1,14 @@
-import { Controller } from "../index"
 import * as proto from "@/shared/proto"
 import { getAvailableTerminalProfiles as getTerminalProfilesFromShell } from "../../../utils/shell"
+import { Controller } from "../index"
 
 export async function getAvailableTerminalProfiles(
-	controller: Controller,
-	request: proto.codee.EmptyRequest,
-): Promise<proto.codee.TerminalProfiles> {
+	_controller: Controller,
+	_request: proto.cline.EmptyRequest,
+): Promise<proto.cline.TerminalProfiles> {
 	const profiles = getTerminalProfilesFromShell()
 
-	return proto.codee.TerminalProfiles.create({
+	return proto.cline.TerminalProfiles.create({
 		profiles: profiles.map((profile) => ({
 			id: profile.id,
 			name: profile.name,

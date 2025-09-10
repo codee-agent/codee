@@ -1,6 +1,6 @@
-import { constructNewFileContent as cnfc } from "./diff"
-import { describe, it } from "mocha"
 import { expect } from "chai"
+import { describe, it } from "mocha"
+import { constructNewFileContent as cnfc } from "./diff"
 
 async function cnfc2(diffContent: string, originalContent: string, isFinal: boolean): Promise<string> {
 	return cnfc(diffContent, originalContent, isFinal, "v2")
@@ -156,6 +156,45 @@ replaced
 			expected: "line2\nreplaced\nline4",
 			isFinal: true,
 		},
+		{
+			name: "malformed diff - missing separator",
+			original: "line1\nline2\nline3",
+			diff: `------- SEARCH
+line2
++++++++ REPLACE
+replaced`,
+			shouldThrow: true,
+		},
+		{
+			name: "malformed diff - trailing space on separator",
+			original: "line1\nline2\nline3",
+			diff: `------- SEARCH
+line2
+======= 
+replaced
++++++++ REPLACE`,
+			shouldThrow: true,
+		},
+		{
+			name: "malformed diff - double replace markers",
+			original: "line1\nline2\nline3",
+			diff: `------- SEARCH
+line2
++++++++ REPLACE
+first replacement
++++++++ REPLACE`,
+			shouldThrow: true,
+		},
+		{
+			name: "malformed diff - malformed separator with dashes",
+			original: "line1\nline2\nline3",
+			diff: `------- SEARCH
+line2
+------- =======
+replaced
++++++++ REPLACE`,
+			shouldThrow: true,
+		},
 	]
 	//.filter(({name}) => name === "multiple ordered replacements")
 	//.filter(({name}) => name === "delete then replace")
@@ -178,8 +217,8 @@ replaced
 			} else {
 				const result1 = await cnfc(diff, original, isFinal ?? true)
 				const result2 = await cnfc2(diff, original, isFinal ?? true)
-				const equal = result1 === result2
-				const equal2 = result1 === expected
+				const _equal = result1 === result2
+				const _equal2 = result1 === expected
 				// Verify both implementations produce same result
 				expect(result1).to.equal(result2)
 

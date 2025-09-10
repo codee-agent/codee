@@ -1,6 +1,6 @@
+import { UserCreditsData } from "@/shared/proto/index.cline"
 import type { Controller } from "../index"
-import type { EmptyRequest } from "@shared/proto/common"
-import { UserCreditsData } from "@shared/proto/account"
+import type { EmptyRequest } from "@shared/proto/cline/common"
 
 /**
  * Handles fetching all user credits data (balance, usage, payments)
@@ -15,17 +15,19 @@ export async function fetchUserCreditsData(controller: Controller, request: Empt
 		}
 
 		// Call the individual RPC variants in parallel
-		const [balance, usageTransactions, paymentTransactions] = await Promise.all([
-			controller.accountService.fetchBalanceRPC(),
-			controller.accountService.fetchUsageTransactionsRPC(),
-			controller.accountService.fetchPaymentTransactionsRPC(),
-		])
+		// const [balance, usageTransactions, paymentTransactions] = await Promise.all([
+		// 	controller.accountService.fetchBalanceRPC(),
+		// 	controller.accountService.fetchUsageTransactionsRPC(),
+		// 	controller.accountService.fetchPaymentTransactionsRPC(),
+		// ])
+		const [usrInfo] = await Promise.all([controller.accountService.fetchUserInfo()])
 
 		// Since generated types match exactly, no conversion needed!
 		return UserCreditsData.create({
-			balance: balance ? { currentBalance: balance.currentBalance } : { currentBalance: 0 },
-			usageTransactions: usageTransactions || [],
-			paymentTransactions: paymentTransactions || [],
+			// balance: balance ? { currentBalance: balance.currentBalance } : { currentBalance: 0 },
+			// usageTransactions: usageTransactions || [],
+			// paymentTransactions: paymentTransactions || [],
+			user: usrInfo,
 		})
 	} catch (error) {
 		console.error(`Failed to fetch user credits data: ${error}`)

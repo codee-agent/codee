@@ -1,45 +1,54 @@
-import { ApiConfiguration } from "@shared/api"
-import { VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
+import { Mode } from "@shared/storage/types"
+import { useExtensionState } from "@/context/ExtensionStateContext"
 import { ApiKeyField } from "../common/ApiKeyField"
-import { useTranslation } from "react-i18next"
+import { DebouncedTextField } from "../common/DebouncedTextField"
+import { getModeSpecificFields } from "../utils/providerUtils"
+import { useApiConfigurationHandlers } from "../utils/useApiConfigurationHandlers"
 
 /**
  * Props for the TogetherProvider component
  */
 interface TogetherProviderProps {
-	apiConfiguration: ApiConfiguration
-	handleInputChange: (field: keyof ApiConfiguration) => (event: any) => void
 	showModelOptions: boolean
 	isPopup?: boolean
+	currentMode: Mode
 }
 
 /**
  * The Together provider configuration component
  */
-export const TogetherProvider = ({ apiConfiguration, handleInputChange, showModelOptions, isPopup }: TogetherProviderProps) => {
-	const { t } = useTranslation()
+export const TogetherProvider = ({ showModelOptions, isPopup, currentMode }: TogetherProviderProps) => {
+	const { apiConfiguration } = useExtensionState()
+	const { handleFieldChange, handleModeFieldChange } = useApiConfigurationHandlers()
+
+	const { togetherModelId } = getModeSpecificFields(apiConfiguration, currentMode)
 
 	return (
 		<div>
 			<ApiKeyField
-				value={apiConfiguration?.togetherApiKey || ""}
-				onChange={handleInputChange("togetherApiKey")}
+				initialValue={apiConfiguration?.togetherApiKey || ""}
+				onChange={(value) => handleFieldChange("togetherApiKey", value)}
 				providerName="Together"
 			/>
-			<VSCodeTextField
-				value={apiConfiguration?.togetherModelId || ""}
-				style={{ width: "100%" }}
-				onInput={handleInputChange("togetherModelId")}
-				placeholder={t("settings.api.enterModelId")}>
-				<span style={{ fontWeight: 500 }}>{t("settings.api.modelId")}</span>
-			</VSCodeTextField>
+			<DebouncedTextField
+				initialValue={togetherModelId || ""}
+				onChange={(value) =>
+					handleModeFieldChange({ plan: "planModeTogetherModelId", act: "actModeTogetherModelId" }, value, currentMode)
+				}
+				placeholder={"Enter Model ID..."}
+				style={{ width: "100%" }}>
+				<span style={{ fontWeight: 500 }}>Model ID</span>
+			</DebouncedTextField>
 			<p
 				style={{
 					fontSize: "12px",
 					marginTop: 3,
 					color: "var(--vscode-descriptionForeground)",
 				}}>
-				<span style={{ color: "var(--vscode-errorForeground)" }}>({t("settings.api.complexPromptsNote")})</span>
+				<span style={{ color: "var(--vscode-errorForeground)" }}>
+					(<span style={{ fontWeight: 500 }}>Note:</span> Codee uses complex prompts and works best with Claude models.
+					Less capable models may not work as expected.)
+				</span>
 			</p>
 		</div>
 	)

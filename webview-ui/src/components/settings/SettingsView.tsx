@@ -1,38 +1,22 @@
-import { UnsavedChangesDialog } from "@/components/common/AlertDialog"
+import { ExtensionMessage } from "@shared/ExtensionMessage"
+import { ResetStateRequest } from "@shared/proto/cline/state"
+import { VSCodeButton } from "@vscode/webview-ui-toolkit/react"
+import { CheckCheck, FlaskConical, Info, LucideIcon, Settings, SquareMousePointer, SquareTerminal, Webhook } from "lucide-react"
+import { useCallback, useEffect, useRef, useState } from "react"
+import { useEvent } from "react-use"
 import HeroTooltip from "@/components/common/HeroTooltip"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { StateServiceClient } from "@/services/grpc-client"
-import { validateApiConfiguration, validateModelId } from "@/utils/validate"
-import { vscode } from "@/utils/vscode"
-import { ExtensionMessage } from "@shared/ExtensionMessage"
-import { EmptyRequest, StringRequest } from "@shared/proto/common"
-import { PlanActMode, ResetStateRequest, TogglePlanActModeRequest, UpdateSettingsRequest } from "@shared/proto/state"
-import {
-	VSCodeButton,
-	VSCodeCheckbox,
-	VSCodeLink,
-	VSCodeTextArea,
-	VSCodeDropdown,
-	VSCodeOption,
-	VSCodeTextField,
-} from "@vscode/webview-ui-toolkit/react"
-import { CheckCheck, FlaskConical, Info, LucideIcon, Settings, SquareMousePointer, SquareTerminal, Webhook } from "lucide-react"
-import { memo, useCallback, useEffect, useRef, useState } from "react"
-import { useEvent } from "react-use"
 import { Tab, TabContent, TabHeader, TabList, TabTrigger } from "../common/Tab"
-import { TabButton } from "../mcp/configuration/McpConfigurationView"
-import ApiOptions from "./ApiOptions"
-import BrowserSettingsSection from "./BrowserSettingsSection"
-import { BrowserSettings } from "@shared/BrowserSettings"
-import FeatureSettingsSection from "./FeatureSettingsSection"
-import PreferredLanguageSetting from "./PreferredLanguageSetting" // Added import
-import Section from "./Section"
 import SectionHeader from "./SectionHeader"
-import TerminalSettingsSection from "./TerminalSettingsSection"
-import { convertApiConfigurationToProtoApiConfiguration } from "@shared/proto-conversions/state/settings-conversion"
-import { convertChatSettingsToProtoChatSettings } from "@shared/proto-conversions/state/chat-settings-conversion"
+import AboutSection from "./sections/AboutSection"
+import ApiConfigurationSection from "./sections/ApiConfigurationSection"
+import BrowserSettingsSection from "./sections/BrowserSettingsSection"
+import DebugSection from "./sections/DebugSection"
+import FeatureSettingsSection from "./sections/FeatureSettingsSection"
+import GeneralSettingsSection from "./sections/GeneralSettingsSection"
+import TerminalSettingsSection from "./sections/TerminalSettingsSection"
 import { useTranslation } from "react-i18next"
-import { getLanguageConfig, updateLanguageConfig } from "@continuedev/core/util/codaiConfigUtil"
 
 const IS_DEV = process.env.IS_DEV
 
@@ -118,504 +102,18 @@ type SettingsViewProps = {
 
 const SettingsView = ({ onDone, targetSection }: SettingsViewProps) => {
 	const { t, i18n } = useTranslation()
-	// Track if there are unsaved changes
-	const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
-	// State for the unsaved changes dialog
-	const [isUnsavedChangesDialogOpen, setIsUnsavedChangesDialogOpen] = useState(false)
-	// Store the action to perform after confirmation
-	const pendingAction = useRef<() => void>()
+	// Track active tab
+	const [activeTab, setActiveTab] = useState<string>(targetSection || SETTINGS_TABS[0].id)
 	// Track if we're currently switching modes
-	const [isSwitchingMode, setIsSwitchingMode] = useState(false)
-	// Track pending mode switch when there are unsaved changes
-	const [pendingModeSwitch, setPendingModeSwitch] = useState<"plan" | "act" | null>(null)
-	const {
-		apiConfiguration,
-		version,
-		openRouterModels,
-		telemetrySetting,
-		setTelemetrySetting,
-		chatSettings,
-		setChatSettings,
-		planActSeparateModelsSetting,
-		setPlanActSeparateModelsSetting,
-		enableCheckpointsSetting,
-		setEnableCheckpointsSetting,
-		mcpMarketplaceEnabled,
-		setMcpMarketplaceEnabled,
-		mcpRichDisplayEnabled,
-		setMcpRichDisplayEnabled,
-		shellIntegrationTimeout,
-		setShellIntegrationTimeout,
-		terminalOutputLineLimit,
-		setTerminalOutputLineLimit,
-		terminalReuseEnabled,
-		setTerminalReuseEnabled,
-		defaultTerminalProfile,
-		setDefaultTerminalProfile,
-		mcpResponsesCollapsed,
-		setMcpResponsesCollapsed,
-		setApiConfiguration,
-		browserSettings,
-	} = useExtensionState()
 
-	// Local state for browser settings
-	const [localBrowserSettings, setLocalBrowserSettings] = useState<BrowserSettings>(browserSettings)
-
-	// Store the original state to detect changes
-	const originalState = useRef({
-		apiConfiguration,
-		telemetrySetting,
-		planActSeparateModelsSetting,
-		enableCheckpointsSetting,
-		mcpMarketplaceEnabled,
-		mcpRichDisplayEnabled,
-		mcpResponsesCollapsed,
-		chatSettings,
-		shellIntegrationTimeout,
-		terminalReuseEnabled,
-		terminalOutputLineLimit,
-		defaultTerminalProfile,
-		browserSettings,
-	})
-	const [apiErrorMessage, setApiErrorMessage] = useState<string | undefined>(undefined)
-	const [modelIdErrorMessage, setModelIdErrorMessage] = useState<string | undefined>(undefined)
-	const [currentLanguage, setCurrentLanguage] = useState<string>("en")
-	const [autocompleteConfig, setAutocompleteConfig] = useState({
-		autocomplete: {
-			provider: "openai",
-			title: "autocomplete-coder",
-			apiKey: "",
-			model: "",
-			apiBase: "",
-			enable: false,
-		},
-	})
-
-	useEffect(() => {
-		// 获取当前语言设置
-		vscode.postMessage({ type: "getLanguageConfig" })
-	}, [])
-
-	useEffect(() => {
-		// 监听语言配置更新
-		const listener = (event: MessageEvent) => {
-			const message = event.data
-			if (message.type === "languageConfig") {
-				setCurrentLanguage(message.language)
-				i18n.changeLanguage(message.language)
-			}
-		}
-
-		window.addEventListener("message", listener)
-		return () => window.removeEventListener("message", listener)
-	}, [i18n])
-
-	const handleLanguageChange = (e: any) => {
-		const newLanguage = e.target.value
-		setCurrentLanguage(newLanguage)
-		vscode.postMessage({
-			type: "updateLanguageConfig",
-			language: newLanguage,
-		})
-		setHasUnsavedChanges(true) //huqb
-	}
-
-	useEffect(() => {
-		// 请求初始配置
-		vscode.postMessage({ type: "getAutocompleteConfig" })
-
-		// 监听配置更新
-		const listener = (event: MessageEvent) => {
-			const message = event.data
-			if (message.type === "autocompleteConfig") {
-				setAutocompleteConfig(message.autocompleteConfig)
-			}
-		}
-
-		window.addEventListener("message", listener)
-		return () => window.removeEventListener("message", listener)
-	}, [])
-	const handleSubmit = async (withoutDone: boolean = false) => {
-		const apiValidationResult = validateApiConfiguration(apiConfiguration)
-		const modelIdValidationResult = validateModelId(apiConfiguration, openRouterModels)
-
-		// setApiErrorMessage(apiValidationResult)
-		// setModelIdErrorMessage(modelIdValidationResult)
-
-		let apiConfigurationToSubmit = apiConfiguration
-		if (!apiValidationResult && !modelIdValidationResult) {
-			// vscode.postMessage({ type: "apiConfiguration", apiConfiguration })
-			// vscode.postMessage({
-			// 	type: "telemetrySetting",
-			// 	text: telemetrySetting,
-			// })
-			// console.log("handleSubmit", withoutDone)
-			// vscode.postMessage({
-			// 	type: "separateModeSetting",
-			// 	text: separateModeSetting,
-			// })
-			vscode.postMessage({
-				type: "updateAutocompleteConfig",
-				autocompleteConfig
-			})
-		} else {
-			// if the api configuration is invalid, we don't save it
-			apiConfigurationToSubmit = undefined
-		}
-
-		try {
-			await StateServiceClient.updateSettings(
-				UpdateSettingsRequest.create({
-					planActSeparateModelsSetting,
-					telemetrySetting,
-					enableCheckpointsSetting,
-					mcpMarketplaceEnabled,
-					mcpRichDisplayEnabled,
-					shellIntegrationTimeout,
-					terminalReuseEnabled,
-					mcpResponsesCollapsed,
-					apiConfiguration: apiConfigurationToSubmit
-						? convertApiConfigurationToProtoApiConfiguration(apiConfigurationToSubmit)
-						: undefined,
-					chatSettings: chatSettings ? convertChatSettingsToProtoChatSettings(chatSettings) : undefined,
-					terminalOutputLineLimit,
-				}),
-			)
-
-			// Update default terminal profile if it has changed
-			if (defaultTerminalProfile !== originalState.current.defaultTerminalProfile) {
-				await StateServiceClient.updateDefaultTerminalProfile({
-					value: defaultTerminalProfile || "default",
-				} as StringRequest)
-			}
-
-			// Update browser settings if they have changed
-			if (JSON.stringify(localBrowserSettings) !== JSON.stringify(originalState.current.browserSettings)) {
-				const { BrowserServiceClient } = await import("@/services/grpc-client")
-				const { UpdateBrowserSettingsRequest } = await import("@shared/proto/browser")
-
-				await BrowserServiceClient.updateBrowserSettings(
-					UpdateBrowserSettingsRequest.create({
-						metadata: {},
-						viewport: localBrowserSettings.viewport,
-						remoteBrowserEnabled: localBrowserSettings.remoteBrowserEnabled,
-						remoteBrowserHost: localBrowserSettings.remoteBrowserHost,
-						chromeExecutablePath: localBrowserSettings.chromeExecutablePath,
-						disableToolUse: localBrowserSettings.disableToolUse,
-					}),
-				)
-			}
-
-			// Update the original state to reflect the saved changes
-			originalState.current = {
-				apiConfiguration,
-				telemetrySetting,
-				planActSeparateModelsSetting,
-				enableCheckpointsSetting,
-				mcpMarketplaceEnabled,
-				mcpRichDisplayEnabled,
-				mcpResponsesCollapsed,
-				chatSettings,
-				shellIntegrationTimeout,
-				terminalReuseEnabled,
-				terminalOutputLineLimit,
-				defaultTerminalProfile,
-				browserSettings: localBrowserSettings,
-			}
-		} catch (error) {
-			console.error("Failed to update settings:", error)
-		}
-
-		if (!withoutDone) {
-			onDone()
-		}
-	}
-
-	useEffect(() => {
-		setApiErrorMessage(undefined)
-		setModelIdErrorMessage(undefined)
-	}, [apiConfiguration])
-
-	// Track the previous mode to detect mode switches
-	const previousMode = useRef(chatSettings.mode)
-
-	// Update original state when mode changes
-	useEffect(() => {
-		// Detect if the mode has changed
-		if (previousMode.current !== chatSettings.mode) {
-			// Mode has changed, update the original state immediately to reflect the new apiConfiguration and chatSettings
-			originalState.current = {
-				...originalState.current,
-				apiConfiguration: apiConfiguration,
-				chatSettings: chatSettings,
-			}
-
-			// Update the previous mode reference
-			previousMode.current = chatSettings.mode
-		}
-	}, [chatSettings.mode, apiConfiguration, chatSettings])
-
-	// Check for unsaved changes by comparing current state with original state
-	useEffect(() => {
-		// Don't check for changes while switching modes
-		if (isSwitchingMode) {
-			return
-		}
-
-		const hasChanges =
-			JSON.stringify(apiConfiguration) !== JSON.stringify(originalState.current.apiConfiguration) ||
-			telemetrySetting !== originalState.current.telemetrySetting ||
-			planActSeparateModelsSetting !== originalState.current.planActSeparateModelsSetting ||
-			enableCheckpointsSetting !== originalState.current.enableCheckpointsSetting ||
-			mcpMarketplaceEnabled !== originalState.current.mcpMarketplaceEnabled ||
-			mcpRichDisplayEnabled !== originalState.current.mcpRichDisplayEnabled ||
-			JSON.stringify(chatSettings) !== JSON.stringify(originalState.current.chatSettings) ||
-			mcpResponsesCollapsed !== originalState.current.mcpResponsesCollapsed ||
-			shellIntegrationTimeout !== originalState.current.shellIntegrationTimeout ||
-			terminalOutputLineLimit !== originalState.current.terminalOutputLineLimit ||
-			terminalReuseEnabled !== originalState.current.terminalReuseEnabled ||
-			defaultTerminalProfile !== originalState.current.defaultTerminalProfile ||
-			JSON.stringify(localBrowserSettings) !== JSON.stringify(originalState.current.browserSettings)
-
-		setHasUnsavedChanges(hasChanges)
-	}, [
-		apiConfiguration,
-		telemetrySetting,
-		planActSeparateModelsSetting,
-		enableCheckpointsSetting,
-		mcpMarketplaceEnabled,
-		mcpRichDisplayEnabled,
-		mcpResponsesCollapsed,
-		chatSettings,
-		shellIntegrationTimeout,
-		terminalReuseEnabled,
-		terminalOutputLineLimit,
-		defaultTerminalProfile,
-		isSwitchingMode,
-	])
-
-	// Handle cancel button click
-	const handleCancel = useCallback(() => {
-		if (hasUnsavedChanges) {
-			// Show confirmation dialog
-			setIsUnsavedChangesDialogOpen(true)
-			pendingAction.current = () => {
-				// Reset all tracked state to original values
-				setTelemetrySetting(originalState.current.telemetrySetting)
-				setPlanActSeparateModelsSetting(originalState.current.planActSeparateModelsSetting)
-				setChatSettings(originalState.current.chatSettings)
-				if (typeof setApiConfiguration === "function") {
-					setApiConfiguration(originalState.current.apiConfiguration ?? {})
-				}
-				if (typeof setEnableCheckpointsSetting === "function") {
-					setEnableCheckpointsSetting(
-						typeof originalState.current.enableCheckpointsSetting === "boolean"
-							? originalState.current.enableCheckpointsSetting
-							: false,
-					)
-				}
-				if (typeof setMcpMarketplaceEnabled === "function") {
-					setMcpMarketplaceEnabled(
-						typeof originalState.current.mcpMarketplaceEnabled === "boolean"
-							? originalState.current.mcpMarketplaceEnabled
-							: false,
-					)
-				}
-				if (typeof setMcpRichDisplayEnabled === "function") {
-					setMcpRichDisplayEnabled(
-						typeof originalState.current.mcpRichDisplayEnabled === "boolean"
-							? originalState.current.mcpRichDisplayEnabled
-							: true,
-					)
-				}
-				// Reset terminal settings
-				if (typeof setShellIntegrationTimeout === "function") {
-					setShellIntegrationTimeout(originalState.current.shellIntegrationTimeout)
-				}
-				if (typeof setTerminalOutputLineLimit === "function") {
-					setTerminalOutputLineLimit(originalState.current.terminalOutputLineLimit)
-				}
-				if (typeof setTerminalReuseEnabled === "function") {
-					setTerminalReuseEnabled(originalState.current.terminalReuseEnabled ?? true)
-				}
-				if (typeof setDefaultTerminalProfile === "function") {
-					setDefaultTerminalProfile(originalState.current.defaultTerminalProfile ?? "default")
-				}
-				if (typeof setMcpResponsesCollapsed === "function") {
-					setMcpResponsesCollapsed(originalState.current.mcpResponsesCollapsed ?? false)
-				}
-				// Reset browser settings
-				setLocalBrowserSettings(originalState.current.browserSettings)
-				// Close settings view
-				onDone()
-			}
-		} else {
-			// No changes, just close
-			onDone()
-		}
-	}, [
-		hasUnsavedChanges,
-		onDone,
-		setTelemetrySetting,
-		setPlanActSeparateModelsSetting,
-		setChatSettings,
-		setApiConfiguration,
-		setEnableCheckpointsSetting,
-		setMcpMarketplaceEnabled,
-		setMcpRichDisplayEnabled,
-		setMcpResponsesCollapsed,
-	])
-
-	// Handle confirmation dialog actions
-	const handleConfirmDiscard = useCallback(async () => {
-		setIsUnsavedChangesDialogOpen(false)
-
-		// Check if this is for a mode switch
-		if (pendingModeSwitch) {
-			// Reset all state to original values (discard changes)
-			setTelemetrySetting(originalState.current.telemetrySetting)
-			setPlanActSeparateModelsSetting(originalState.current.planActSeparateModelsSetting)
-			setChatSettings(originalState.current.chatSettings)
-			if (typeof setApiConfiguration === "function") {
-				setApiConfiguration(originalState.current.apiConfiguration ?? {})
-			}
-			if (typeof setEnableCheckpointsSetting === "function") {
-				setEnableCheckpointsSetting(
-					typeof originalState.current.enableCheckpointsSetting === "boolean"
-						? originalState.current.enableCheckpointsSetting
-						: false,
-				)
-			}
-			if (typeof setMcpMarketplaceEnabled === "function") {
-				setMcpMarketplaceEnabled(
-					typeof originalState.current.mcpMarketplaceEnabled === "boolean"
-						? originalState.current.mcpMarketplaceEnabled
-						: false,
-				)
-			}
-			if (typeof setMcpRichDisplayEnabled === "function") {
-				setMcpRichDisplayEnabled(
-					typeof originalState.current.mcpRichDisplayEnabled === "boolean"
-						? originalState.current.mcpRichDisplayEnabled
-						: true,
-				)
-			}
-			// Reset terminal settings
-			if (typeof setShellIntegrationTimeout === "function") {
-				setShellIntegrationTimeout(originalState.current.shellIntegrationTimeout)
-			}
-			if (typeof setTerminalOutputLineLimit === "function") {
-				setTerminalOutputLineLimit(originalState.current.terminalOutputLineLimit)
-			}
-			if (typeof setTerminalReuseEnabled === "function") {
-				setTerminalReuseEnabled(originalState.current.terminalReuseEnabled ?? true)
-			}
-			if (typeof setDefaultTerminalProfile === "function") {
-				setDefaultTerminalProfile(originalState.current.defaultTerminalProfile ?? "default")
-			}
-			if (typeof setMcpResponsesCollapsed === "function") {
-				setMcpResponsesCollapsed(originalState.current.mcpResponsesCollapsed ?? false)
-			}
-
-			// Now perform the mode switch
-			const targetMode = pendingModeSwitch
-			setPendingModeSwitch(null)
-			setIsSwitchingMode(true)
-
-			try {
-				await StateServiceClient.togglePlanActMode(
-					TogglePlanActModeRequest.create({
-						chatSettings: {
-							mode: targetMode === "plan" ? PlanActMode.PLAN : PlanActMode.ACT,
-							preferredLanguage: chatSettings.preferredLanguage,
-							openAiReasoningEffort: chatSettings.openAIReasoningEffort,
-						},
-					}),
-				)
-			} catch (error) {
-				console.error("Failed to toggle Plan/Act mode:", error)
-			} finally {
-				setIsSwitchingMode(false)
-			}
-		} else if (pendingAction.current) {
-			// Regular cancel button flow
-			pendingAction.current()
-			pendingAction.current = undefined
-		}
-	}, [
-		pendingModeSwitch,
-		setTelemetrySetting,
-		setPlanActSeparateModelsSetting,
-		setChatSettings,
-		setApiConfiguration,
-		setEnableCheckpointsSetting,
-		setMcpMarketplaceEnabled,
-		setMcpRichDisplayEnabled,
-		setShellIntegrationTimeout,
-		setTerminalOutputLineLimit,
-		setTerminalReuseEnabled,
-		setDefaultTerminalProfile,
-		setMcpResponsesCollapsed,
-		chatSettings.preferredLanguage,
-		chatSettings.openAIReasoningEffort,
-	])
-
-	// Handle save and switch for mode changes
-	const handleSaveAndSwitch = useCallback(async () => {
-		setIsUnsavedChangesDialogOpen(false)
-
-		if (pendingModeSwitch) {
-			// Save the current settings first
-			await handleSubmit(true)
-
-			// Now perform the mode switch
-			const targetMode = pendingModeSwitch
-			setPendingModeSwitch(null)
-			setIsSwitchingMode(true)
-
-			try {
-				await StateServiceClient.togglePlanActMode(
-					TogglePlanActModeRequest.create({
-						chatSettings: {
-							mode: targetMode === "plan" ? PlanActMode.PLAN : PlanActMode.ACT,
-							preferredLanguage: chatSettings.preferredLanguage,
-							openAiReasoningEffort: chatSettings.openAIReasoningEffort,
-						},
-					}),
-				)
-			} catch (error) {
-				console.error("Failed to toggle Plan/Act mode:", error)
-			} finally {
-				setIsSwitchingMode(false)
-			}
-		}
-	}, [pendingModeSwitch, handleSubmit, chatSettings.preferredLanguage, chatSettings.openAIReasoningEffort])
-
-	const handleCancelDiscard = useCallback(() => {
-		setIsUnsavedChangesDialogOpen(false)
-		pendingAction.current = undefined
-		setPendingModeSwitch(null)
-	}, [])
-
-	// validate as soon as the component is mounted
-	/*
-	useEffect will use stale values of variables if they are not included in the dependency array. 
-	so trying to use useEffect with a dependency array of only one value for example will use any 
-	other variables' old values. In most cases you don't want this, and should opt to use react-use 
-	hooks.
-    
-		// uses someVar and anotherVar
-	// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [someVar])
-	If we only want to run code once on mount we can use react-use's useEffectOnce or useMount
-	*/
+	const { version } = useExtensionState()
 
 	const handleMessage = useCallback((event: MessageEvent) => {
 		const message: ExtensionMessage = event.data
 		switch (message.type) {
 			// Handle tab navigation through targetSection prop instead
 			case "grpc_response":
-				if (message.grpc_response?.message?.action === "scrollToSettings") {
+				if (message.grpc_response?.message?.key === "scrollToSettings") {
 					const tabId = message.grpc_response?.message?.value
 					if (tabId) {
 						console.log("Opening settings tab from GRPC response:", tabId)
@@ -661,46 +159,6 @@ const SettingsView = ({ onDone, targetSection }: SettingsViewProps) => {
 		}
 	}
 
-	const handlePlanActModeChange = async (tab: "plan" | "act") => {
-		// Prevent switching if already in that mode or if currently switching
-		if (tab === chatSettings.mode || isSwitchingMode) {
-			return
-		}
-
-		// Check if there are unsaved changes
-		if (hasUnsavedChanges) {
-			// Store the pending mode switch
-			setPendingModeSwitch(tab)
-			// Show the unsaved changes dialog
-			setIsUnsavedChangesDialogOpen(true)
-			return
-		}
-
-		// No unsaved changes, proceed with the switch
-		setIsSwitchingMode(true)
-
-		try {
-			// Perform the mode switch
-			await StateServiceClient.togglePlanActMode(
-				TogglePlanActModeRequest.create({
-					chatSettings: {
-						mode: tab === "plan" ? PlanActMode.PLAN : PlanActMode.ACT,
-						preferredLanguage: chatSettings.preferredLanguage,
-						openAiReasoningEffort: chatSettings.openAIReasoningEffort,
-					},
-				}),
-			)
-		} catch (error) {
-			console.error("Failed to toggle Plan/Act mode:", error)
-		} finally {
-			// Always re-enable mode switching, even on error
-			setIsSwitchingMode(false)
-		}
-	}
-
-	// Track active tab
-	const [activeTab, setActiveTab] = useState<string>(targetSection || SETTINGS_TABS[0].id)
-
 	// Update active tab when targetSection changes
 	useEffect(() => {
 		if (targetSection) {
@@ -728,7 +186,9 @@ const SettingsView = ({ onDone, targetSection }: SettingsViewProps) => {
 
 	// Setup resize observer to detect when we should switch to compact mode
 	useEffect(() => {
-		if (!containerRef.current) return
+		if (!containerRef.current) {
+			return
+		}
 
 		const observer = new ResizeObserver((entries) => {
 			for (const entry of entries) {
@@ -751,23 +211,19 @@ const SettingsView = ({ onDone, targetSection }: SettingsViewProps) => {
 					<h3 className="text-[var(--vscode-foreground)] m-0">{t("settings.title")}</h3>
 				</div>
 				<div className="flex gap-2">
-					<VSCodeButton appearance="secondary" onClick={handleCancel}>
-						{t("settings.cancel")}
-					</VSCodeButton>
-					<VSCodeButton onClick={() => handleSubmit(false)} disabled={!hasUnsavedChanges}>
-						{t("settings.done")}
-					</VSCodeButton>
+					{/* All settings now save immediately, so only show Done button */}
+					<VSCodeButton onClick={onDone}>{t("settings.done")}</VSCodeButton>
 				</div>
 			</TabHeader>
 
 			{/* Vertical tabs layout */}
-			<div ref={containerRef} className={`${settingsTabsContainer} ${isCompactMode ? "narrow" : ""}`}>
+			<div className={`${settingsTabsContainer} ${isCompactMode ? "narrow" : ""}`} ref={containerRef}>
 				{/* Tab sidebar */}
 				<TabList
-					value={activeTab}
-					onValueChange={handleTabChange}
 					className={settingsTabList}
-					data-compact={isCompactMode}>
+					data-compact={isCompactMode}
+					onValueChange={handleTabChange}
+					value={activeTab}>
 					{SETTINGS_TABS.map((tab) =>
 						isCompactMode ? (
 							<HeroTooltip key={tab.id} content={t(tab.tooltipText)} placement="right">
@@ -792,15 +248,15 @@ const SettingsView = ({ onDone, targetSection }: SettingsViewProps) => {
 							</HeroTooltip>
 						) : (
 							<TabTrigger
-								key={tab.id}
-								value={tab.id}
 								className={`${
 									activeTab === tab.id
 										? `${settingsTabTrigger} ${settingsTabTriggerActive}`
 										: settingsTabTrigger
 								} focus:ring-0`}
 								data-compact={isCompactMode}
-								data-testid={`tab-${tab.id}`}>
+								data-testid={`tab-${tab.id}`}
+								key={tab.id}
+								value={tab.id}>
 								<div className={`flex items-center gap-2 ${isCompactMode ? "justify-center" : ""}`}>
 									<tab.icon className="w-4 h-4" />
 									<span className="tab-label">{t(tab.name)}</span>
@@ -814,7 +270,9 @@ const SettingsView = ({ onDone, targetSection }: SettingsViewProps) => {
 				{(() => {
 					const renderSectionHeader = (tabId: string) => {
 						const tab = SETTINGS_TABS.find((t) => t.id === tabId)
-						if (!tab) return null
+						if (!tab) {
+							return null
+						}
 
 						return (
 							<SectionHeader>
@@ -832,327 +290,35 @@ const SettingsView = ({ onDone, targetSection }: SettingsViewProps) => {
 					return (
 						<TabContent className="flex-1 overflow-auto">
 							{/* API Configuration Tab */}
-							{activeTab === "api-config" && (
-								<div>
-									{renderSectionHeader("api-config")}
-									<Section>
-										{/* Tabs container */}
-										{planActSeparateModelsSetting ? (
-											<div className="rounded-md mb-5 bg-[var(--vscode-panel-background)]">
-												<div className="flex gap-[1px] mb-[10px] -mt-2 border-0 border-b border-solid border-[var(--vscode-panel-border)]">
-													<TabButton
-														isActive={chatSettings.mode === "plan"}
-														onClick={() => handlePlanActModeChange("plan")}
-														disabled={isSwitchingMode}
-														style={{
-															opacity: isSwitchingMode ? 0.6 : 1,
-															cursor: isSwitchingMode ? "not-allowed" : "pointer",
-														}}>
-														{isSwitchingMode && chatSettings.mode === "act"
-															? "Switching..."
-															: t("settings.planMode")}
-													</TabButton>
-													<TabButton
-														isActive={chatSettings.mode === "act"}
-														onClick={() => handlePlanActModeChange("act")}
-														disabled={isSwitchingMode}
-														style={{
-															opacity: isSwitchingMode ? 0.6 : 1,
-															cursor: isSwitchingMode ? "not-allowed" : "pointer",
-														}}>
-														{isSwitchingMode && chatSettings.mode === "plan"
-															? "Switching..."
-															: t("settings.actMode")}
-													</TabButton>
-												</div>
-
-												{/* Content container */}
-												<div className="-mb-3">
-													<ApiOptions
-														key={chatSettings.mode}
-														showModelOptions={true}
-														apiErrorMessage={apiErrorMessage}
-														modelIdErrorMessage={modelIdErrorMessage}
-													/>
-												</div>
-											</div>
-										) : (
-											<ApiOptions
-												key={"single"}
-												showModelOptions={true}
-												apiErrorMessage={apiErrorMessage}
-												modelIdErrorMessage={modelIdErrorMessage}
-											/>
-										)}
-
-										<div className="mb-[5px]">
-											<VSCodeCheckbox
-												className="mb-[5px]"
-												checked={planActSeparateModelsSetting}
-												onChange={(e: any) => {
-													const checked = e.target.checked === true
-													setPlanActSeparateModelsSetting(checked)
-												}}>
-												{t("settings.other.planActSeparateModels")}
-											</VSCodeCheckbox>
-											<p className="text-xs mt-[5px] text-[var(--vscode-descriptionForeground)]">
-												{t("settings.other.planActSeparateModelsDesc")}
-											</p>
-										</div>
-
-										{/* Autocomplete Settings Section */}
-										<div className="border border-solid border-[var(--vscode-panel-border)] rounded-md p-[10px] mb-5 bg-[var(--vscode-panel-background)] [&_vscode-dropdown]:w-full [&_vscode-text-field]:w-full">
-											<details
-												onToggle={(e) => {
-													if (e.currentTarget.open) {
-														vscode.postMessage({ type: "getAutocompleteConfig" })
-													}
-												}}>
-												<summary className="cursor-pointer font-medium">
-													{t("settings.autocomplete.title")}
-												</summary>
-												<div className="mt-3 space-y-3">
-													<VSCodeDropdown>
-														<VSCodeOption value="openai">OpenAI Compatible</VSCodeOption>
-													</VSCodeDropdown>
-
-													<VSCodeTextField
-														value={autocompleteConfig.autocomplete.apiBase}
-														onInput={(e: any) => {
-															if (e.target.value !== autocompleteConfig.autocomplete.apiBase) {
-																setHasUnsavedChanges(true) //huqb
-															}
-															setAutocompleteConfig({
-																...autocompleteConfig,
-																autocomplete: {
-																	...autocompleteConfig.autocomplete,
-																	apiBase: e.target.value,
-																},
-															})
-														}}
-														placeholder={t("settings.autocomplete.apiBase")}>
-														{t("settings.autocomplete.apiBase")}
-													</VSCodeTextField>
-
-													<VSCodeTextField
-														value={autocompleteConfig.autocomplete.apiKey}
-														type="password"
-														onInput={(e: any) => {
-															if (e.target.value !== autocompleteConfig.autocomplete.apiKey) {
-																setHasUnsavedChanges(true) //huqb
-															}
-															setAutocompleteConfig({
-																...autocompleteConfig,
-																autocomplete: {
-																	...autocompleteConfig.autocomplete,
-																	apiKey: e.target.value,
-																},
-															})
-														}}
-														placeholder={t("settings.autocomplete.apiKey")}>
-														{t("settings.autocomplete.apiKey")}
-													</VSCodeTextField>
-
-													<VSCodeTextField
-														value={autocompleteConfig.autocomplete.model}
-														onInput={(e: any) => {
-															if (e.target.value !== autocompleteConfig.autocomplete.model) {
-																setHasUnsavedChanges(true) //huqb
-															}
-															setAutocompleteConfig({
-																...autocompleteConfig,
-																autocomplete: {
-																	...autocompleteConfig.autocomplete,
-																	model: e.target.value,
-																},
-															})
-														}}
-														placeholder={t("settings.autocomplete.model")}>
-														{t("settings.autocomplete.model")}
-													</VSCodeTextField>
-
-													<VSCodeCheckbox
-														checked={autocompleteConfig.autocomplete.enable}
-														onChange={(e: any) => {
-															if (e.target.checked !== autocompleteConfig.autocomplete.enable) {
-																setHasUnsavedChanges(true) //huqb
-															}
-															setAutocompleteConfig({
-																...autocompleteConfig,
-																autocomplete: {
-																	...autocompleteConfig.autocomplete,
-																	enable: e.target.checked,
-																},
-															})
-														}}>
-														{t("settings.autocomplete.enable")}
-													</VSCodeCheckbox>
-												</div>
-											</details>
-										</div>
-
-									</Section>
-								</div>
-							)}
+							{activeTab === "api-config" && <ApiConfigurationSection renderSectionHeader={renderSectionHeader} />}
 
 							{/* General Settings Tab */}
-							{activeTab === "general" && (
-								<div>
-									{renderSectionHeader("general")}
-									<Section>
-										{/*chatSettings && (
-											<PreferredLanguageSetting
-												chatSettings={chatSettings}
-												setChatSettings={setChatSettings}
-											/>
-										)*/}
-
-										{/* <div className="mb-[5px]">
-											<VSCodeCheckbox
-												className="mb-[5px]"
-												checked={telemetrySetting !== "disabled"}
-												onChange={(e: any) => {
-													const checked = e.target.checked === true
-													setTelemetrySetting(checked ? "enabled" : "disabled")
-												}}>
-												Allow anonymous error and usage reporting
-											</VSCodeCheckbox>
-											<p className="text-xs mt-[5px] text-[var(--vscode-descriptionForeground)]">
-												Help improve codee by sending anonymous usage data and error reports. No code,
-												prompts, or personal information are ever sent. See our{" "}
-												<VSCodeLink
-													href="https://docs.cline.bot/more-info/telemetry"
-													className="text-inherit">
-													telemetry overview
-												</VSCodeLink>{" "}
-												and{" "}
-												<VSCodeLink href="https://cline.bot/privacy" className="text-inherit">
-													privacy policy
-												</VSCodeLink>{" "}
-												for more details.
-											</p>
-										</div> */}
-										{/* Language Selection */}
-										<div className="border border-solid border-[var(--vscode-panel-border)] rounded-md p-[10px] mb-5 bg-[var(--vscode-panel-background)]">
-											<details>
-												<summary className="cursor-pointer font-medium">
-													{t("settings.language.title")}
-												</summary>
-												<div className="mt-3">
-													<VSCodeDropdown
-														value={currentLanguage || "English"}
-														onChange={handleLanguageChange}
-														style={{ position: "relative", zIndex: 2000 }}>
-														<VSCodeOption value="en">English</VSCodeOption>
-														<VSCodeOption value="zh-CN">简体中文</VSCodeOption>
-													</VSCodeDropdown>
-												</div>
-											</details>
-										</div>
-									</Section>
-								</div>
-							)}
+							{activeTab === "general" && <GeneralSettingsSection renderSectionHeader={renderSectionHeader} />}
 
 							{/* Feature Settings Tab */}
-							{activeTab === "features" && (
-								<div>
-									{renderSectionHeader("features")}
-									<Section>
-										<FeatureSettingsSection />
-									</Section>
-								</div>
-							)}
+							{activeTab === "features" && <FeatureSettingsSection renderSectionHeader={renderSectionHeader} />}
 
 							{/* Browser Settings Tab */}
-							{activeTab === "browser" && (
-								<div>
-									{renderSectionHeader("browser")}
-									<Section>
-										<BrowserSettingsSection
-											localBrowserSettings={localBrowserSettings}
-											onBrowserSettingsChange={setLocalBrowserSettings}
-										/>
-									</Section>
-								</div>
-							)}
+							{activeTab === "browser" && <BrowserSettingsSection renderSectionHeader={renderSectionHeader} />}
 
 							{/* Terminal Settings Tab */}
-							{activeTab === "terminal" && (
-								<div>
-									{renderSectionHeader("terminal")}
-									<Section>
-										<TerminalSettingsSection />
-									</Section>
-								</div>
-							)}
+							{activeTab === "terminal" && <TerminalSettingsSection renderSectionHeader={renderSectionHeader} />}
 
 							{/* Debug Tab (only in dev mode) */}
 							{IS_DEV && activeTab === "debug" && (
-								<div>
-									{renderSectionHeader("debug")}
-									<Section>
-										<VSCodeButton
-											onClick={() => handleResetState()}
-											className="mt-[5px] w-auto"
-											style={{ backgroundColor: "var(--vscode-errorForeground)", color: "black" }}>
-											Reset Workspace State
-										</VSCodeButton>
-										<VSCodeButton
-											onClick={() => handleResetState(true)}
-											className="mt-[5px] w-auto"
-											style={{ backgroundColor: "var(--vscode-errorForeground)", color: "black" }}>
-											{t("settings.other.resetState")}
-										</VSCodeButton>
-										<p className="text-xs mt-[5px] text-[var(--vscode-descriptionForeground)]">
-											{t("settings.other.resetStateDesc")}
-										</p>
-									</Section>
-								</div>
+								<DebugSection onResetState={handleResetState} renderSectionHeader={renderSectionHeader} />
 							)}
 
 							{/* About Tab */}
 							{activeTab === "about" && (
-								<div>
-									{renderSectionHeader("about")}
-									<Section>
-										<div className="text-center text-[var(--vscode-descriptionForeground)] text-xs leading-[1.2] px-0 py-0 pr-2 pb-[15px] mt-auto">
-											<p className="break-words m-0 p-0">
-												{t("settings.feedback.text")}{" "}
-												<VSCodeLink href="https://github.com/codee-agent/codee" className="inline">
-													https://github.com/codee-agent/codee
-												</VSCodeLink>
-											</p>
-											<p className="italic mt-[10px] mb-0 p-0">
-												{t("settings.feedback.version", { version })}
-											</p>
-										</div>
-									</Section>
-								</div>
+								<AboutSection renderSectionHeader={renderSectionHeader} version={version} />
 							)}
 						</TabContent>
 					)
 				})()}
 			</div>
-
-			{/* Unsaved Changes Dialog */}
-			<UnsavedChangesDialog
-				open={isUnsavedChangesDialogOpen}
-				onOpenChange={setIsUnsavedChangesDialogOpen}
-				onConfirm={handleConfirmDiscard}
-				onCancel={handleCancelDiscard}
-				onSave={pendingModeSwitch ? handleSaveAndSwitch : undefined}
-				title={pendingModeSwitch ? "Save Changes?" : "Unsaved Changes"}
-				description={
-					pendingModeSwitch
-						? `Do you want to save your changes to ${chatSettings.mode === "plan" ? "Plan" : "Act"} mode before switching to ${pendingModeSwitch === "plan" ? "Plan" : "Act"} mode?`
-						: "You have unsaved changes. Are you sure you want to discard them?"
-				}
-				confirmText={pendingModeSwitch ? "Switch Without Saving" : "Discard Changes"}
-				saveText="Save & Switch"
-				showSaveOption={!!pendingModeSwitch}
-			/>
 		</Tab>
 	)
 }
 
-export default memo(SettingsView)
+export default SettingsView

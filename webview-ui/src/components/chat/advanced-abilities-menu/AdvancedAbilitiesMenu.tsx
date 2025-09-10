@@ -2,13 +2,15 @@ import { useRef, useState } from "react"
 import { getAsVar, VSC_TITLEBAR_INACTIVE_FOREGROUND } from "@/utils/vscStyles"
 import { useTranslation } from "react-i18next"
 import AdvancedAbilitiesModal from "./AdvancedAbilitiesModal"
+import type { ChatState } from "../chat-view/types/chatTypes"
 
 interface AdvancedAbilitiesMenuProps {
 	hasMemoryBank: boolean | undefined
 	setHasMemoryBank: (value: boolean) => void
+	chatState: ChatState
 }
 
-const AdvancedAbilitiesMenu = ({ hasMemoryBank, setHasMemoryBank }: AdvancedAbilitiesMenuProps) => {
+const AdvancedAbilitiesMenu = ({ hasMemoryBank, setHasMemoryBank, chatState }: AdvancedAbilitiesMenuProps) => {
 	const { t } = useTranslation()
 	const [isVisible, setIsVisible] = useState(false)
 	const buttonRef = useRef<HTMLDivElement>(null)
@@ -35,6 +37,7 @@ const AdvancedAbilitiesMenu = ({ hasMemoryBank, setHasMemoryBank }: AdvancedAbil
 				buttonRef={buttonRef}
 				hasMemoryBank={hasMemoryBank}
 				setHasMemoryBank={setHasMemoryBank}
+				chatState={chatState}
 			/>
 		</div>
 	)

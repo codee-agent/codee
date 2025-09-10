@@ -1,57 +1,66 @@
-import { ApiConfiguration, askSageModels, askSageDefaultURL } from "@shared/api"
-import { VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
+import { askSageDefaultURL, askSageModels } from "@shared/api"
+import { Mode } from "@shared/storage/types"
+import { useExtensionState } from "@/context/ExtensionStateContext"
 import { ApiKeyField } from "../common/ApiKeyField"
-import { ModelSelector } from "../common/ModelSelector"
+import { DebouncedTextField } from "../common/DebouncedTextField"
 import { ModelInfoView } from "../common/ModelInfoView"
+import { ModelSelector } from "../common/ModelSelector"
 import { normalizeApiConfiguration } from "../utils/providerUtils"
-import { useTranslation } from "react-i18next"
+import { useApiConfigurationHandlers } from "../utils/useApiConfigurationHandlers"
 
 /**
  * Props for the AskSageProvider component
  */
 interface AskSageProviderProps {
-	apiConfiguration: ApiConfiguration
-	handleInputChange: (field: keyof ApiConfiguration) => (event: any) => void
 	showModelOptions: boolean
 	isPopup?: boolean
+	currentMode: Mode
 }
 
 /**
  * The AskSage provider configuration component
  */
-export const AskSageProvider = ({ apiConfiguration, handleInputChange, showModelOptions, isPopup }: AskSageProviderProps) => {
-	const { t } = useTranslation()
+export const AskSageProvider = ({ showModelOptions, isPopup, currentMode }: AskSageProviderProps) => {
+	const { apiConfiguration } = useExtensionState()
+	const { handleFieldChange, handleModeFieldChange } = useApiConfigurationHandlers()
+
 	// Get the normalized configuration
-	const { selectedModelId, selectedModelInfo } = normalizeApiConfiguration(apiConfiguration)
+	const { selectedModelId, selectedModelInfo } = normalizeApiConfiguration(apiConfiguration, currentMode)
 
 	return (
 		<div>
 			<ApiKeyField
-				value={apiConfiguration?.asksageApiKey || ""}
-				onChange={handleInputChange("asksageApiKey")}
+				helpText="This key is stored locally and only used to make API requests from this extension."
+				initialValue={apiConfiguration?.asksageApiKey || ""}
+				onChange={(value) => handleFieldChange("asksageApiKey", value)}
 				providerName="AskSage"
-				helpText={t("settings.api.keyStoredLocally")}
 			/>
 
-			<VSCodeTextField
-				value={apiConfiguration?.asksageApiUrl || askSageDefaultURL}
+			<DebouncedTextField
+				initialValue={apiConfiguration?.asksageApiUrl || askSageDefaultURL}
+				onChange={(value) => handleFieldChange("asksageApiUrl", value)}
+				placeholder="Enter AskSage API URL..."
 				style={{ width: "100%" }}
-				type="url"
-				onInput={handleInputChange("asksageApiUrl")}
-				placeholder="Enter AskSage API URL...">
+				type="url">
 				<span style={{ fontWeight: 500 }}>AskSage API URL</span>
-			</VSCodeTextField>
+			</DebouncedTextField>
 
 			{showModelOptions && (
 				<>
 					<ModelSelector
+						label="Model"
 						models={askSageModels}
+						onChange={(e) =>
+							handleModeFieldChange(
+								{ plan: "planModeApiModelId", act: "actModeApiModelId" },
+								e.target.value,
+								currentMode,
+							)
+						}
 						selectedModelId={selectedModelId}
-						onChange={handleInputChange("apiModelId")}
-						label={t("settings.api.model")}
 					/>
 
-					<ModelInfoView selectedModelId={selectedModelId} modelInfo={selectedModelInfo} isPopup={isPopup} />
+					<ModelInfoView isPopup={isPopup} modelInfo={selectedModelInfo} selectedModelId={selectedModelId} />
 				</>
 			)}
 		</div>

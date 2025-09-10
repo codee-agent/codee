@@ -1,12 +1,11 @@
-import { useRef, useState, useEffect, useCallback } from "react"
-import { useEvent, useClickAway, useWindowSize } from "react-use"
+import { useRef, useState, useEffect } from "react"
+import { useClickAway, useWindowSize } from "react-use"
 import { VSCodeButton } from "@vscode/webview-ui-toolkit/react"
 import { CODE_BLOCK_BG_COLOR } from "@/components/common/CodeBlock"
 import { useTranslation } from "react-i18next"
-import { vscode } from "@/utils/vscode"
-import { ExtensionMessage } from "@shared/ExtensionMessage"
-import { FileServiceClient, McpServiceClient } from "@/services/grpc-client"
-import { EmptyRequest, StringRequest } from "@shared/proto/common"
+import { BusinessServiceClient } from "@/services/grpc-client"
+import { EmptyRequest, StringRequest } from "@shared/proto/cline/common"
+import type { ChatState } from "../chat-view/types/chatTypes"
 
 interface AdvancedAbilitiesModalProps {
 	isVisible: boolean
@@ -14,6 +13,7 @@ interface AdvancedAbilitiesModalProps {
 	buttonRef: React.RefObject<HTMLDivElement>
 	hasMemoryBank: boolean | undefined
 	setHasMemoryBank: (value: boolean) => void
+	chatState: ChatState
 }
 
 const AdvancedAbilitiesModal: React.FC<AdvancedAbilitiesModalProps> = ({
@@ -22,83 +22,54 @@ const AdvancedAbilitiesModal: React.FC<AdvancedAbilitiesModalProps> = ({
 	buttonRef,
 	hasMemoryBank,
 	setHasMemoryBank,
+	chatState
 }) => {
 	const { t } = useTranslation()
 	const modalRef = useRef<HTMLDivElement>(null)
 	const { width: viewportWidth, height: viewportHeight } = useWindowSize()
 	const [arrowPosition, setArrowPosition] = useState(0)
 	const [menuPosition, setMenuPosition] = useState(0)
-	const [progress, setProgress] = useState(0)
-	const [isPolling, setIsPolling] = useState(true)
-	const [isSuccess, setIsSuccess] = useState(false)
-	const [isTimeout, setIsTimeout] = useState(false)
-	const [refreshDisabled, setRefreshDisabled] = useState(false)
-	const [codeIndexState, setCodeIndexState] = useState<string | null | undefined>(null)
+	const {
+		setInputValue,
+		sendingDisabled,
+		setIsTextAreaFocused
+	} = chatState
+
 
 	const handleMemorybank = (text: string) => {
-		vscode.postMessage({
-			type: "memoryBank",
-			text,
-		})
-		setIsVisible(false)
-	}
-
-	const handleConfigIndex = () => {
-		vscode.postMessage({
-			type: "refreshCodeIndex",
-		})
-		setRefreshDisabled(true)
-	}
-
-	const handleClick = (name: "download" | "open") => {
-		McpServiceClient.openMcpMention(StringRequest.create({ value: name }))
+    BusinessServiceClient.setMemoryBank(StringRequest.create({value: text})).then((response) => {
+      console.log('handleMemorybank', response)
+      if (response.value) {
+        const initPrompt =
+						response.value == "init"
+							? "Please carefully read the relevant introduction documents of this project then initialize memory bank"
+							: response.value == "update"
+								? "update memory bank"
+								: "follow your custom instructions"
+				setInputValue(initPrompt)
+				const sendButton = document.querySelector('[data-testid="send-button"]') as HTMLElement | null
+				console.log('sendButton', sendButton)
+				setTimeout(() => {
+					if (!sendingDisabled) {
+						setIsTextAreaFocused(false)
+						sendButton?.click()
+					}
+				}, 0)
+      }
+      setIsVisible(false)
+    }).catch(() => {
+      setIsVisible(false)
+    })
 	}
 
 	useEffect(() => {
 		if (isVisible) {
-			vscode.postMessage({
-				type: "getCodeIndexState",
-			})
-			vscode.postMessage({
-				type: "getMemoryBank",
-			})
-			const interval = setInterval(() => {
-				vscode.postMessage({
-					type: "getCodeIndexState",
-				})
-			}, 2000)
-
-			return () => clearInterval(interval)
+			BusinessServiceClient.getMemoryBank(EmptyRequest.create()).then(response => {
+        setHasMemoryBank(response.value ?? false)
+      })
 		}
 	}, [isVisible])
 
-	const handleMessage = useCallback((event: MessageEvent) => {
-		const message: ExtensionMessage = event.data
-		switch (message.type) {
-			case "hasMemoryBank": {
-				setHasMemoryBank(message.hasMemoryBank ?? false)
-				break
-			}
-			case "getCodeIndexState": {
-				console.log("===========getCodeIndexState, ", message)
-				setCodeIndexState(message.codeIndexState?.status)
-				if (message.codeIndexState?.status === "indexing") {
-					setProgress(message.codeIndexState?.percent ?? 90)
-				}
-				if (message.codeIndexState?.status === "success") {
-					setProgress(100)
-					setIsSuccess(true)
-				}
-				break
-			}
-			case "refreshCodeIndex": {
-				setRefreshDisabled(false)
-				setIsVisible(false)
-			}
-		}
-	}, [])
-
-	useEvent("message", handleMessage)
 	useClickAway(modalRef, (e) => {
 		if (buttonRef.current && buttonRef.current.contains(e.target as Node)) {
 			return
@@ -157,62 +128,6 @@ const AdvancedAbilitiesModal: React.FC<AdvancedAbilitiesModalProps> = ({
 					<VSCodeButton appearance="primary" className="w-full" onClick={() => handleMemorybank("remember")}>
 						{t("advanced.memorybank.remember")}
 					</VSCodeButton>
-				)}
-
-				<div className="mt-6 mb-2.5">
-					<span className="text-[color:var(--vscode-foreground)] font-medium">{t("advanced.codeIndex.title")}:</span>
-				</div>
-				<p className="mb-3">{t("advanced.codeIndex.description")}</p>
-
-				{codeIndexState === "downloadError" ? (
-					<div className="text-sm text-yellow-500 mb-4">
-						{t("advanced.codeIndex.downloadError")}
-						<span
-							className="text-blue-500 cursor-pointer hover:underline ml-1"
-							onClick={() => handleClick("download")}>
-							{t("advanced.codeIndex.downloadErrorClick")}
-						</span>
-						{t("advanced.codeIndex.downloadErrorDownload")}
-						<span className="text-blue-500 cursor-pointer hover:underline ml-1" onClick={() => handleClick("open")}>
-							{t("advanced.codeIndex.downloadErrorClick")}
-						</span>
-						{t("advanced.codeIndex.downloadErrorOpen")}
-					</div>
-				) : codeIndexState === "disabled" ? (
-					<div className="text-sm text-yellow-500 mb-4">{t("advanced.codeIndex.disabled")}</div>
-				) : codeIndexState === "error" ? (
-					<div className="text-sm text-red-500 mb-4">{t("advanced.codeIndex.error")}</div>
-				) : codeIndexState === "no_workspace" ? (
-					<div className="text-sm text-yellow-500 mb-4">{t("advanced.codeIndex.no_workspace")}</div>
-				) : (
-					<>
-						<div className="w-full mb-4">
-							<div className="flex justify-between text-xs mb-1">
-								{progress >= 100 && isSuccess ? <span>Progress complete</span> : <span>Progressing...</span>}
-								{isTimeout && <span className="text-red-500">Failed</span>}
-							</div>
-							<div className="my-2 h-1.5 w-full rounded-md border border-solid border-gray-400">
-								<div
-									className={`h-full rounded-lg transition-all duration-200 ease-in-out ${
-										isTimeout ? "bg-red-600" : "bg-stone-500"
-									}`}
-									style={{
-										width: `${isTimeout ? 100 : progress}%`,
-									}}
-								/>
-							</div>
-						</div>
-
-						{isSuccess && (
-							<VSCodeButton
-								appearance="primary"
-								className="w-full"
-								disabled={refreshDisabled}
-								onClick={() => handleConfigIndex()}>
-								{t("advanced.codeIndex.refresh")}
-							</VSCodeButton>
-						)}
-					</>
 				)}
 			</div>
 		</div>

@@ -34,12 +34,12 @@ const RulesToggleList = ({
 				<>
 					{rules.map(([rulePath, enabled]) => (
 						<RuleRow
-							key={rulePath}
-							rulePath={rulePath}
 							enabled={enabled}
 							isGlobal={isGlobal}
-							toggleRule={toggleRule}
+							key={rulePath}
+							rulePath={rulePath}
 							ruleType={ruleType}
+							toggleRule={toggleRule}
 						/>
 					))}
 					{showNewRule && <NewRuleRow isGlobal={isGlobal} ruleType={ruleType} />}
@@ -48,7 +48,7 @@ const RulesToggleList = ({
 				<>
 					{showNoRules && (
 						<div className="flex flex-col items-center gap-3 my-3 text-[var(--vscode-descriptionForeground)]">
-							{ruleType === "workflow" ? t("CodeeRules.noWorkflowsFound") : t("CodeeRules.noRulesFound")}
+							{ruleType === "workflow" ? t("CodaiRules.noWorkflowsFound") : t("CodaiRules.noRulesFound")}
 						</div>
 					)}
 					{showNewRule && <NewRuleRow isGlobal={isGlobal} ruleType={ruleType} />}

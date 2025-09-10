@@ -1,0 +1,60 @@
+syntax = "proto3";
+
+package cline;
+import "cline/common.proto";
+option java_package = "bot.cline.proto";
+option java_multiple_files = true;
+
+// Service for business-related operations
+service BusinessService {
+  // Set current language
+  rpc setCurrentLanguage(SetCurrentLanguageRequest) returns (Empty);
+    
+  // Get current language
+  rpc getCurrentLanguage(EmptyRequest) returns (String);
+    
+  // Set auto-completion information
+  rpc setAutoCompletion(SetAutoCompletionRequest) returns (Empty);
+    
+  // Get auto-completion information
+  rpc getAutoCompletion(EmptyRequest) returns (AutoCompletionResponse);
+    
+  // Enhance prompts
+  rpc enhancePrompts(EnhancePromptsRequest) returns (String);
+
+  // memory-bank
+  rpc getMemoryBank(EmptyRequest) returns (Boolean);
+
+  rpc setMemoryBank(StringRequest) returns (String);
+}
+
+// Request for setting current language
+message SetCurrentLanguageRequest {
+  string language = 1;
+}
+
+// Auto-completion configuration object
+message AutoCompletionConfig {
+  string provider = 1;
+  string title = 2;
+  string model = 3;
+  string api_key = 4;
+  bool enable = 5;
+  string api_base = 6;
+}
+
+// Request for setting auto-completion information
+message SetAutoCompletionRequest {
+  AutoCompletionConfig auto_completion = 1;
+}
+
+// Response for getting auto-completion information
+message AutoCompletionResponse {
+  AutoCompletionConfig auto_completion = 1;
+}
+
+// Request for enhancing prompts
+message EnhancePromptsRequest {
+  string mode = 1;
+  string input = 2;
+}

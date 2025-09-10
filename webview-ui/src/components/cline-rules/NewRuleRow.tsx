@@ -1,9 +1,8 @@
-import { useState, useRef, useEffect } from "react"
-import { vscode } from "@/utils/vscode"
+import { CreateRuleFileRequest } from "@shared/proto-conversions/file/rule-files-conversion"
 import { VSCodeButton } from "@vscode/webview-ui-toolkit/react"
+import { useEffect, useRef, useState } from "react"
 import { useClickAway } from "react-use"
 import { FileServiceClient } from "@/services/grpc-client"
-import { CreateRuleFileRequest } from "@shared/proto-conversions/file/rule-files-conversion"
 import { useTranslation } from "react-i18next"
 
 interface NewRuleRowProps {
@@ -36,7 +35,9 @@ const NewRuleRow: React.FC<NewRuleRowProps> = ({ isGlobal, ruleType }) => {
 	})
 
 	const getExtension = (filename: string): string => {
-		if (filename.startsWith(".") && !filename.includes(".", 1)) return ""
+		if (filename.startsWith(".") && !filename.includes(".", 1)) {
+			return ""
+		}
 		const match = filename.match(/\.[^.]+$/)
 		return match ? match[0].toLowerCase() : ""
 	}
@@ -53,7 +54,7 @@ const NewRuleRow: React.FC<NewRuleRowProps> = ({ isGlobal, ruleType }) => {
 			const extension = getExtension(trimmedFilename)
 
 			if (!isValidExtension(extension)) {
-				setError(t("CodeeRules.invalidExtension"))
+				setError(t("CodaiRules.invalidExtension"))
 				return
 			}
 
@@ -89,38 +90,38 @@ const NewRuleRow: React.FC<NewRuleRowProps> = ({ isGlobal, ruleType }) => {
 
 	return (
 		<div
-			ref={componentRef}
 			className={`mb-2.5 transition-all duration-300 ease-in-out ${isExpanded ? "opacity-100" : "opacity-70 hover:opacity-100"}`}
-			onClick={() => !isExpanded && setIsExpanded(true)}>
+			onClick={() => !isExpanded && setIsExpanded(true)}
+			ref={componentRef}>
 			<div
 				className={`flex items-center p-2 rounded bg-[var(--vscode-input-background)] transition-all duration-300 ease-in-out h-[18px] ${
 					isExpanded ? "shadow-sm" : ""
 				}`}>
 				{isExpanded ? (
-					<form onSubmit={handleSubmit} className="flex flex-1 items-center">
+					<form className="flex flex-1 items-center" onSubmit={handleSubmit}>
 						<input
-							ref={inputRef}
-							type="text"
-							placeholder={
-								ruleType === "workflow"
-									? t("CodeeRules.workflowNamePlaceholder")
-									: t("CodeeRules.ruleNamePlaceholder")
-							}
-							value={filename}
+							className="flex-1 bg-[var(--vscode-input-background)] text-[var(--vscode-input-foreground)] border-0 outline-0 rounded focus:outline-none focus:ring-0 focus:border-transparent"
 							onChange={(e) => setFilename(e.target.value)}
 							onKeyDown={handleKeyDown}
-							className="flex-1 bg-[var(--vscode-input-background)] text-[var(--vscode-input-foreground)] border-0 outline-0 rounded focus:outline-none focus:ring-0 focus:border-transparent"
+							placeholder={
+								ruleType === "workflow"
+									? t("CodaiRules.workflowNamePlaceholder")
+									: t("CodaiRules.ruleNamePlaceholder")
+							}
+							ref={inputRef}
 							style={{
 								outline: "none",
 							}}
+							type="text"
+							value={filename}
 						/>
 
 						<div className="flex items-center ml-2 space-x-2">
 							<VSCodeButton
 								appearance="icon"
 								type="submit"
-								aria-label={t("CodeeRules.createRuleFile")}
-								title={t("CodeeRules.createRuleFile")}
+								aria-label={t("CodaiRules.createRuleFile")}
+								title={t("CodaiRules.createRuleFile")}
 								style={{ padding: "0px" }}>
 								<span className="codicon codicon-add text-[14px]" />
 							</VSCodeButton>
@@ -129,13 +130,13 @@ const NewRuleRow: React.FC<NewRuleRowProps> = ({ isGlobal, ruleType }) => {
 				) : (
 					<>
 						<span className="flex-1 text-[var(--vscode-descriptionForeground)] bg-[var(--vscode-input-background)] italic text-xs">
-							{ruleType === "workflow" ? t("CodeeRules.newWorkflowFile") : t("CodeeRules.newRuleFile")}
+							{ruleType === "workflow" ? t("CodaiRules.newWorkflowFile") : t("CodaiRules.newRuleFile")}
 						</span>
 						<div className="flex items-center ml-2 space-x-2">
 							<VSCodeButton
 								appearance="icon"
-								aria-label={t("CodeeRules.newRuleFileButton")}
-								title={t("CodeeRules.newRuleFileButton")}
+								aria-label={t("CodaiRules.newRuleFileButton")}
+								title={t("CodaiRules.newRuleFileButton")}
 								onClick={(e) => {
 									e.stopPropagation()
 									setIsExpanded(true)

@@ -1,12 +1,13 @@
 import React from "react"
 import { useExtensionState } from "@/context/ExtensionStateContext"
+import { updateSetting } from "./utils/settingsHandlers"
 
 const TerminalOutputLineLimitSlider: React.FC = () => {
-	const { terminalOutputLineLimit, setTerminalOutputLineLimit } = useExtensionState()
+	const { terminalOutputLineLimit } = useExtensionState()
 
 	const handleSliderChange = (event: React.ChangeEvent<HTMLInputElement>) => {
 		const value = parseInt(event.target.value, 10)
-		setTerminalOutputLineLimit(value)
+		updateSetting("terminalOutputLineLimit", value)
 	}
 
 	return (
@@ -16,14 +17,14 @@ const TerminalOutputLineLimitSlider: React.FC = () => {
 			</label>
 			<div style={{ display: "flex", alignItems: "center" }}>
 				<input
-					type="range"
 					id="terminal-output-limit"
-					min="100"
 					max="5000"
-					step="100"
-					value={terminalOutputLineLimit ?? 500}
+					min="100"
 					onChange={handleSliderChange}
+					step="100"
 					style={{ flexGrow: 1, marginRight: "1rem" }}
+					type="range"
+					value={terminalOutputLineLimit ?? 500}
 				/>
 				<span>{terminalOutputLineLimit ?? 500}</span>
 			</div>

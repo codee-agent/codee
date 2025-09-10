@@ -1,12 +1,11 @@
+import { EmptyRequest } from "@shared/proto/cline/common"
+import { AddRemoteMcpServerRequest, McpServers } from "@shared/proto/cline/mcp"
+import { convertProtoMcpServersToMcpServers } from "@shared/proto-conversions/mcp/mcp-server-conversion"
+import { VSCodeButton, VSCodeLink, VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
+import { useState } from "react"
 import { LINKS } from "@/constants"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { McpServiceClient } from "@/services/grpc-client"
-import { convertProtoMcpServersToMcpServers } from "@shared/proto-conversions/mcp/mcp-server-conversion"
-import { McpServers } from "@shared/proto/mcp"
-import { EmptyRequest } from "@shared/proto/common"
-import { AddRemoteMcpServerRequest } from "@shared/proto/mcp"
-import { VSCodeButton, VSCodeLink, VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
-import { useState } from "react"
 import { useTranslation } from "react-i18next"
 
 const AddRemoteServerForm = ({ onServerAdded }: { onServerAdded: () => void }) => {
@@ -78,28 +77,28 @@ const AddRemoteServerForm = ({ onServerAdded }: { onServerAdded: () => void }) =
 			<form onSubmit={handleSubmit}>
 				<div className="mb-2">
 					<VSCodeTextField
-						value={serverName}
+						className="w-full"
+						disabled={isSubmitting}
 						onChange={(e) => {
 							setServerName((e.target as HTMLInputElement).value)
 							setError("")
 						}}
-						disabled={isSubmitting}
-						className="w-full"
-						placeholder={t("mcp.addServer.serverNamePlaceholder")}>
+						placeholder={t("mcp.addServer.serverNamePlaceholder")}
+						value={serverName}>
 						{t("mcp.addServer.serverName")}
 					</VSCodeTextField>
 				</div>
 
 				<div className="mb-2">
 					<VSCodeTextField
-						value={serverUrl}
+						className="w-full mr-4"
+						disabled={isSubmitting}
 						onChange={(e) => {
 							setServerUrl((e.target as HTMLInputElement).value)
 							setError("")
 						}}
-						disabled={isSubmitting}
 						placeholder={t("mcp.addServer.serverUrlPlaceholder")}
-						className="w-full mr-4">
+						value={serverUrl}>
 						{t("mcp.addServer.serverUrl")}
 					</VSCodeTextField>
 				</div>
@@ -107,7 +106,7 @@ const AddRemoteServerForm = ({ onServerAdded }: { onServerAdded: () => void }) =
 				{error && <div className="mb-3 text-[var(--vscode-errorForeground)]">{error}</div>}
 
 				<div className="flex items-center mt-3 w-full">
-					<VSCodeButton type="submit" disabled={isSubmitting} className="w-full">
+					<VSCodeButton className="w-full" disabled={isSubmitting} type="submit">
 						{isSubmitting ? t("mcp.addServer.addingButton") : t("mcp.addServer.addButton")}
 					</VSCodeButton>
 
@@ -120,12 +119,12 @@ const AddRemoteServerForm = ({ onServerAdded }: { onServerAdded: () => void }) =
 
 				<VSCodeButton
 					appearance="secondary"
-					style={{ width: "100%", marginBottom: "5px", marginTop: 15 }}
 					onClick={() => {
 						McpServiceClient.openMcpSettings(EmptyRequest.create({})).catch((error) => {
 							console.error("Error opening MCP settings:", error)
 						})
-					}}>
+					}}
+					style={{ width: "100%", marginBottom: "5px", marginTop: 15 }}>
 					{t("mcp.addServer.editConfig")}
 				</VSCodeButton>
 			</form>

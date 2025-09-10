@@ -6,9 +6,11 @@ interface RunDiffEvalOptions {
 	modelIds: string
 	systemPromptName: string
 	validAttemptsPerCase: number
+	maxAttemptsPerCase?: number
 	parsingFunction: string
 	diffEditFunction: string
 	thinkingBudget: number
+	provider: string
 	parallel: boolean
 	verbose: boolean
 	testPath: string
@@ -16,6 +18,7 @@ interface RunDiffEvalOptions {
 	replay: boolean
 	replayRunId?: string
 	diffApplyFile?: string
+	saveLocally: boolean
 	maxCases?: number
 }
 
@@ -37,6 +40,8 @@ export async function runDiffEvalHandler(options: RunDiffEvalOptions) {
 		options.parsingFunction,
 		"--diff-edit-function",
 		options.diffEditFunction,
+		"--provider",
+		options.provider,
 	]
 
 	// Conditionally add the optional arguments
@@ -70,8 +75,16 @@ export async function runDiffEvalHandler(options: RunDiffEvalOptions) {
 		args.push("--verbose")
 	}
 
+	if (options.maxAttemptsPerCase) {
+		args.push("--max-attempts-per-case", String(options.maxAttemptsPerCase))
+	}
+
 	if (options.maxCases) {
 		args.push("--max-cases", String(options.maxCases))
+	}
+
+	if (options.saveLocally) {
+		args.push("--save-locally")
 	}
 
 	try {

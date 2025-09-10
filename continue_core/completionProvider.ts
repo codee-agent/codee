@@ -94,9 +94,9 @@ export class ContinueCompletionProvider implements vscode.InlineCompletionItemPr
 				title: config.title || "Qwen2.5-3B",
 				provider: config.provider || "openai",
 				providerName: config.provider || "openai",
-				model: config.model || "qwen3b-coder",
+				model: config.model,
 				apiKey: config.apiKey || "",
-				apiBase: config.apiBase || "https://aieditor.y5kfpt.com/v1",
+				apiBase: config.apiBase || "",
 				contextLength: 8192,
 				useLegacyCompletionsEndpoint: true,
 				completionOptions: {

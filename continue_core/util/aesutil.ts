@@ -65,6 +65,6 @@ export class AesUtil {
 	static getPluginVersion() {
 		const extension = vscode.extensions.getExtension("Codee.codee")
 		// console.log("@@@,autocomplete extension:" + extension)
-		return extension?.packageJSON.version || "unknown"
+		return `v${extension?.packageJSON.version || "1.0.0"}`
 	}
 }

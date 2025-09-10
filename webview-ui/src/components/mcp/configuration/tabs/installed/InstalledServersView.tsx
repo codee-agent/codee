@@ -1,9 +1,7 @@
-import { useExtensionState } from "@/context/ExtensionStateContext"
+import { EmptyRequest, StringRequest } from "@shared/proto/cline/common"
 import { VSCodeButton, VSCodeLink } from "@vscode/webview-ui-toolkit/react"
-
+import { useExtensionState } from "@/context/ExtensionStateContext"
 import { McpServiceClient, UiServiceClient } from "@/services/grpc-client"
-
-import { EmptyRequest, StringRequest } from "@shared/proto/common"
 import ServersToggleList from "./ServersToggleList"
 import { useTranslation } from "react-i18next"
 
@@ -34,18 +32,18 @@ const InstalledServersView = () => {
 				</VSCodeLink>
 			</div>
 
-			<ServersToggleList servers={servers} isExpandable={true} hasTrashIcon={false} />
+			<ServersToggleList hasTrashIcon={false} isExpandable={true} servers={servers} />
 
 			{/* Settings Section */}
 			<div style={{ marginBottom: "20px", marginTop: 10 }}>
 				<VSCodeButton
 					appearance="secondary"
-					style={{ width: "100%", marginBottom: "5px" }}
 					onClick={() => {
 						McpServiceClient.openMcpSettings(EmptyRequest.create({})).catch((error) => {
 							console.error("Error opening MCP settings:", error)
 						})
-					}}>
+					}}
+					style={{ width: "100%", marginBottom: "5px" }}>
 					<span className="codicon codicon-server" style={{ marginRight: "6px" }}></span>
 					{t("mcp.installed.configureServers")}
 				</VSCodeButton>

@@ -6,13 +6,19 @@
 		"language": {
 			"title": "Language Settings"
 		},
+		"checkupdate": {
+			"text": "New version is available",
+			"action": "Update",
+			"checking": "Checking"
+		},
 		"autocomplete": {
 			"title": "Autocomplete Settings",
 			"provider": "Provider",
 			"apiBase": "Base URL",
 			"apiKey": "API Key",
 			"model": "Model",
-			"enable": "Enable Autocomplete"
+			"enable": "Enable Autocomplete",
+			"disableTitle": "Login required to use Codee"
 		},
 		"other": {
 			"title": "Other Settings",
@@ -290,7 +296,22 @@
 	"account": {
 		"title": "Account",
 		"done": "Done",
-		"underConstruction": "Under construction..."
+		"underConstruction": "Under construction...",
+		"dashboard": "Dashboard",
+		"logout": "Log out",
+		"loggedIn": "Logged in",
+		"currentBalance": "Current Balance",
+		"historyConsumption": "History Consumption",
+		"usageCount": "Usage Count",
+		"loading": "Loading...",
+		"currencySymbol": "$",
+		"addCredits": "Add Credits",
+		"signUpMessage": "Sign up for an account to get access to the latest models, billing dashboard to view usage and credits, and more upcoming features.",
+		"signUpButton": "Sign up with Codee",
+		"agreementPart1": "By continuing, you agree to the",
+		"termsOfService": "Terms of Service",
+		"agreementPart2": "and",
+		"privacyPolicy": "Privacy Policy."
 	},
 	"CodeeRules": {
 		"manageRules": "Manage Codee Rules & Workflows",

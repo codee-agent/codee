@@ -10,7 +10,7 @@ import { SVGProps } from "react"
  * @param {SVGProps<SVGSVGElement>} props - Standard SVG props including className, style, etc.
  * @returns {JSX.Element} SVG Codee logo that adapts to VS Code themes
  */
-const ClineLogoVariable = (props: SVGProps<SVGSVGElement>): JSX.Element => (
+const CodeeLogoVariable = (props: SVGProps<SVGSVGElement>): JSX.Element => (
 	<svg xmlns="http://www.w3.org/2000/svg" xmlnsXlink="http://www.w3.org/1999/xlink" width="64px" height="64px">
 		<image
 			x="0px"
@@ -71,4 +71,4 @@ MQ+iCiwAAAAASUVORK5CYII="
 		/>
 	</svg>
 )
-export default ClineLogoVariable
+export default CodeeLogoVariable

@@ -1,14 +1,14 @@
+import { EmptyRequest } from "@shared/proto/cline/common"
 import { VSCodeButton } from "@vscode/webview-ui-toolkit/react"
-import { useFirebaseAuth } from "@/context/FirebaseAuthContext"
+import { useClineAuth } from "@/context/ClineAuthContext"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { AccountServiceClient } from "@/services/grpc-client"
-import { EmptyRequest } from "@shared/proto/common"
 
 export const ClineAccountInfoCard = () => {
-	const { user: firebaseUser, handleSignOut } = useFirebaseAuth()
-	const { userInfo, apiConfiguration, navigateToAccount } = useExtensionState()
+	const { clineUser } = useClineAuth()
+	const { apiConfiguration, navigateToAccount } = useExtensionState()
 
-	let user = apiConfiguration?.clineApiKey ? firebaseUser || userInfo : undefined
+	const user = apiConfiguration?.codeeApiKey ? clineUser : undefined
 
 	const handleLogin = () => {
 		AccountServiceClient.accountLoginClicked(EmptyRequest.create()).catch((err) =>
@@ -28,7 +28,7 @@ export const ClineAccountInfoCard = () => {
 				</VSCodeButton>
 			) : (
 				<div>
-					<VSCodeButton onClick={handleLogin} className="mt-0">
+					<VSCodeButton className="mt-0" onClick={handleLogin}>
 						Sign Up with Cline
 					</VSCodeButton>
 				</div>

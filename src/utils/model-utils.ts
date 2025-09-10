@@ -1,15 +1,17 @@
-import { ApiHandler } from "@api/index"
+import { ApiHandlerModel } from "@core/api"
 
-export function isClaude4ModelFamily(api: ApiHandler): boolean {
-	const model = api.getModel()
-	const modelId = model.id
-	return (
-		modelId.includes("sonnet-4") || modelId.includes("opus-4") || modelId.includes("4-sonnet") || modelId.includes("4-opus")
-	)
+export function modelDoesntSupportWebp(apiHandlerModel: ApiHandlerModel): boolean {
+	const modelId = apiHandlerModel.id.toLowerCase()
+	return modelId.includes("grok")
 }
 
-export function isGemini2dot5ModelFamily(api: ApiHandler): boolean {
-	const model = api.getModel()
-	const modelId = model.id
-	return modelId.includes("gemini-2.5")
+/**
+ * Determines if reasoning content should be skipped for a given model
+ * Currently skips reasoning for Grok-4 models since they only display "thinking" without useful information
+ */
+export function shouldSkipReasoningForModel(modelId?: string): boolean {
+	if (!modelId) {
+		return false
+	}
+	return modelId.includes("grok-4")
 }

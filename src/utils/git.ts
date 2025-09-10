@@ -16,7 +16,7 @@ async function checkGitRepo(cwd: string): Promise<boolean> {
 	try {
 		await execAsync("git rev-parse --git-dir", { cwd })
 		return true
-	} catch (error) {
+	} catch (_error) {
 		return false
 	}
 }
@@ -25,7 +25,7 @@ async function checkGitInstalled(): Promise<boolean> {
 	try {
 		await execAsync("git --version")
 		return true
-	} catch (error) {
+	} catch (_error) {
 		return false
 	}
 }
@@ -34,7 +34,7 @@ async function checkGitRepoHasCommits(cwd: string): Promise<boolean> {
 	try {
 		await execAsync("git rev-parse HEAD", { cwd })
 		return true
-	} catch (error) {
+	} catch (_error) {
 		return false
 	}
 }
@@ -182,6 +182,62 @@ export async function getWorkingState(cwd: string): Promise<string> {
 	} catch (error) {
 		console.error("Error getting working state:", error)
 		return `Failed to get working state: ${error instanceof Error ? error.message : String(error)}`
+	}
+}
+
+export async function getGitRemoteUrls(cwd: string): Promise<string[]> {
+	try {
+		const isInstalled = await checkGitInstalled()
+		if (!isInstalled) {
+			return []
+		}
+
+		const isRepo = await checkGitRepo(cwd)
+		if (!isRepo) {
+			return []
+		}
+
+		const { stdout } = await execAsync("git remote -v", { cwd })
+		if (!stdout.trim()) {
+			return []
+		}
+
+		// Parse output to extract unique URLs
+		// git remote -v output format: "remoteName remoteUrl (fetch|push)"
+		const remotes = stdout
+			.trim()
+			.split("\n")
+			.filter((line) => line.includes("(fetch)")) // Only fetch URLs to avoid duplicates
+			.map((line) => {
+				const match = line.match(/^(\S+)\s+(\S+)\s+\(fetch\)$/)
+				return match ? { name: match[1], url: match[2] } : null
+			})
+			.filter((remote): remote is { name: string; url: string } => remote !== null)
+
+		return remotes.map((remote) => `${remote.name}: ${remote.url}`)
+	} catch (error) {
+		console.error("Error getting git remotes:", error)
+		return []
+	}
+}
+
+export async function getLatestGitCommitHash(cwd: string): Promise<string | null> {
+	try {
+		const isInstalled = await checkGitInstalled()
+		if (!isInstalled) {
+			return null
+		}
+
+		const isRepo = await checkGitRepo(cwd)
+		if (!isRepo) {
+			return null
+		}
+
+		const { stdout } = await execAsync("git rev-parse HEAD", { cwd })
+		return stdout.trim() || null
+	} catch (error) {
+		console.error("Error getting latest git commit hash:", error)
+		return null
 	}
 }
 

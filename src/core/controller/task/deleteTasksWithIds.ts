@@ -1,9 +1,10 @@
-import path from "path"
+import { Empty, StringArrayRequest } from "@shared/proto/cline/common"
 import fs from "fs/promises"
-import { Controller } from ".."
-import { Empty, StringArrayRequest, BooleanRequest } from "../../../shared/proto/common"
-import { TaskMethodHandler } from "./index"
+import path from "path"
+import { HostProvider } from "@/hosts/host-provider"
+import { ShowMessageType } from "@/shared/proto/host/window"
 import { fileExistsAtPath } from "../../../utils/fs"
+import { Controller } from ".."
 
 /**
  * Deletes tasks with the specified IDs
@@ -12,12 +13,25 @@ import { fileExistsAtPath } from "../../../utils/fs"
  * @returns Empty response
  * @throws Error if operation fails
  */
-export const deleteTasksWithIds: TaskMethodHandler = async (
-	controller: Controller,
-	request: StringArrayRequest,
-): Promise<Empty> => {
+export async function deleteTasksWithIds(controller: Controller, request: StringArrayRequest): Promise<Empty> {
 	if (!request.value || request.value.length === 0) {
 		throw new Error("Missing task IDs")
+	}
+
+	const taskCount = request.value.length
+	const message =
+		taskCount === 1
+			? "Are you sure you want to delete this task? This action cannot be undone."
+			: `Are you sure you want to delete these ${taskCount} tasks? This action cannot be undone.`
+
+	const userChoice = await HostProvider.window.showMessage({
+		type: ShowMessageType.WARNING,
+		message,
+		options: { modal: true, items: ["Delete"] },
+	})
+
+	if (userChoice.selectedOption !== "Delete") {
+		return Empty.create()
 	}
 
 	for (const id of request.value) {
@@ -56,10 +70,7 @@ async function deleteTaskWithId(controller: Controller, id: string): Promise<voi
 			contextHistoryFilePath,
 			taskMetadataFilePath,
 		]) {
-			const fileExists = await fileExistsAtPath(filePath)
-			if (fileExists) {
-				await fs.unlink(filePath)
-			}
+			await fs.rm(filePath, { force: true })
 		}
 
 		// Remove empty task directory

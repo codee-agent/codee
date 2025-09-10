@@ -1,23 +1,22 @@
+import { Anthropic } from "@anthropic-ai/sdk"
+import { TaskMetadata } from "@core/context/context-tracking/ContextTrackerTypes"
+import { execa } from "@packages/execa"
+import { ClineMessage } from "@shared/ExtensionMessage"
+import { fileExistsAtPath } from "@utils/fs"
+import fs from "fs/promises"
+import os from "os"
 import * as path from "path"
 import * as vscode from "vscode"
-import fs from "fs/promises"
-import { Anthropic } from "@anthropic-ai/sdk"
-import { fileExistsAtPath } from "@utils/fs"
-import { ClineMessage } from "@shared/ExtensionMessage"
-import { TaskMetadata } from "@core/context/context-tracking/ContextTrackerTypes"
-import os from "os"
-import { execa } from "@packages/execa"
-
 import { getWorkspacePath } from "@utils/path"
-import { createHash } from "crypto"
-import { getContinueGlobalPath } from "@continuedev/core/util/paths"
-import { existsSync } from "fs"
 
 export const GlobalFileNames = {
 	apiConversationHistory: "api_conversation_history.json",
 	contextHistory: "context_history.json",
 	uiMessages: "ui_messages.json",
 	openRouterModels: "openrouter_models.json",
+	vercelAiGatewayModels: "vercel_ai_gateway_models.json",
+	groqModels: "groq_models.json",
+	basetenModels: "baseten_models.json",
 	mcpSettings: "codee_mcp_settings.json",
 	clineRules: ".codeerules",
 	workflows: ".codeerules/workflows",
@@ -39,7 +38,7 @@ export async function getDocumentsPath(): Promise<string> {
 			if (trimmedPath) {
 				return trimmedPath
 			}
-		} catch (err) {
+		} catch (_err) {
 			console.error("Failed to retrieve Windows Documents path. Falling back to homedir/Documents.")
 		}
 	} else if (process.platform === "linux") {
@@ -185,7 +184,7 @@ export async function saveTaskMetadata(context: vscode.ExtensionContext, taskId:
 
 export async function hasMemoryBank(): Promise<boolean> {
 	try {
-		return (await fs.stat(path.join(getWorkspacePath(), "memory-bank"))).isDirectory()
+		return (await fs.stat(path.join(await getWorkspacePath(), "memory-bank"))).isDirectory()
 	} catch {
 		return false
 	}
@@ -197,16 +196,4 @@ export async function createMemorybankDir(workspacePath: string): Promise<string
 	const memorybankDir = path.join(workspacePath, "memory-bank")
 	await fs.mkdir(memorybankDir)
 	return memorybankDir
-}
-
-export async function getMcpPath(url?: string) {
-	const mcpPath = path.join(getContinueGlobalPath(), "mcp")
-	try {
-		if (!existsSync(mcpPath)) {
-			await fs.mkdir(mcpPath, { recursive: true })
-		}
-		return mcpPath
-	} catch {
-		return mcpPath
-	}
 }

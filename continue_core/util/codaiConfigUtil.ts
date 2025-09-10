@@ -12,14 +12,15 @@ function getCodeeConfigJsonPath(): string {
 }
 
 export interface CodeeConfig {
-	autocomplete: {
+	autocomplete: Array<{
 		provider: string
 		title: string
 		model: string
 		apiKey: string
 		apiBase: string
 		enable: boolean
-	}
+	}>
+	currentCompleteProvider: string
 	advanced: {
 		memorybank: boolean
 	}
@@ -27,14 +28,25 @@ export interface CodeeConfig {
 }
 
 const DEFAULT_CONFIG: CodeeConfig = {
-	autocomplete: {
-		provider: "Openai Compatiable",
-		title: "autocomplete-coder",
-		model: "",
-		apiKey: "",
-		apiBase: "",
-		enable: false,
-	},
+	autocomplete: [
+		{
+			provider: "Openai Compatiable",
+			title: "autocomplete-coder",
+			model: "",
+			apiKey: "",
+			apiBase: "",
+			enable: false,
+		},
+		{
+			provider: "codee",
+			title: "autocomplete-coder",
+			model: "",
+			apiKey: "",
+			apiBase: "",
+			enable: false,
+		},
+	],
+	currentCompleteProvider: "Openai Compatiable",
 	advanced: {
 		memorybank: false,
 	},
@@ -47,36 +59,89 @@ export function getCodeeConfig(): CodeeConfig {
 		fs.writeFileSync(configPath, JSON.stringify(DEFAULT_CONFIG, null, 2))
 		return DEFAULT_CONFIG
 	}
-	return JSON.parse(fs.readFileSync(configPath, "utf8"))
+	const config = JSON.parse(fs.readFileSync(configPath, "utf8"))
+	if (!config.currentCompleteProvider) {
+		config.currentCompleteProvider = "Openai Compatiable"
+	}
+	if (!Array.isArray(config.autocomplete)) {
+		config.autocomplete = [
+			config.autocomplete,
+			{
+				provider: "codee",
+				title: "autocomplete-coder",
+				model: "",
+				apiKey: "",
+				apiBase: "",
+				enable: false,
+			},
+		]
+	}
+	return config
 }
 
-export function updateCodeeConfig(config: Partial<CodeeConfig>): void {
+//type:0 自动补全 1 语言设置 2 高级设置
+export function updateCodeeConfig(config: Partial<CodeeConfig>, type: number = 0): void {
 	const currentConfig = getCodeeConfig()
 	let newConfig = { ...currentConfig, ...config }
-	// console.log("@@@@@@@@@,config1:",newConfig)
-	let url = newConfig.autocomplete.apiBase
-	let key = newConfig.autocomplete.apiKey
-	newConfig.autocomplete.apiBase = AesUtil.aesEncrypt(url)
-	newConfig.autocomplete.apiKey = AesUtil.aesEncrypt(key)
-	// console.log("@@@@@@@@@,config2:",newConfig)
+
+	if (type === 0 && newConfig.autocomplete) {
+		const autocompleteConfig = newConfig.autocomplete.find((item) => item.provider === newConfig.currentCompleteProvider)
+		if (!autocompleteConfig) return
+
+		const url = autocompleteConfig.apiBase
+		const key = autocompleteConfig.apiKey
+		if (url === "" || key === "") {
+			console.log("@@API Base and API Key都不能为空")
+			return
+		}
+
+		autocompleteConfig.apiBase = AesUtil.aesEncrypt(url)
+		autocompleteConfig.apiKey = AesUtil.aesEncrypt(key)
+	}
+
 	fs.writeFileSync(getCodeeConfigJsonPath(), JSON.stringify(newConfig, null, 2))
 }
 
 export function getAutocompleteConfig() {
-	let autocompleteConfig = getCodeeConfig().autocomplete
-	autocompleteConfig.apiBase = AesUtil.aesDecrypt(autocompleteConfig.apiBase)
-	autocompleteConfig.apiKey = AesUtil.aesDecrypt(autocompleteConfig.apiKey)
-	// console.log("@@@@@@@@@,config0:",autocompleteConfig)
-	return autocompleteConfig
+	const config = getCodeeConfig()
+	const autocompleteConfig = config.autocomplete.find((item) => item.provider === config.currentCompleteProvider)
+	if (!autocompleteConfig) {
+		throw new Error("No autocomplete config found for current provider")
+	}
+	return {
+		...autocompleteConfig,
+		apiBase: AesUtil.aesDecrypt(autocompleteConfig.apiBase),
+		apiKey: AesUtil.aesDecrypt(autocompleteConfig.apiKey),
+	}
 }
 
-export function updateAutocompleteConfig(config: Partial<CodeeConfig["autocomplete"]>) {
+export function getAllAutocompleteConfig(): Partial<CodeeConfig> {
+	const config = getCodeeConfig()
+	config.autocomplete.map((item) => {
+		item.apiBase = item.apiBase ? AesUtil.aesDecrypt(item.apiBase) : item.apiBase
+		item.apiKey = item.apiKey ? AesUtil.aesDecrypt(item.apiKey) : item.apiKey
+	})
+	return {
+		autocomplete: config.autocomplete,
+		currentCompleteProvider: config.currentCompleteProvider,
+	}
+}
+
+export function updateAutocompleteConfig(config: Partial<CodeeConfig["autocomplete"][0]>) {
 	const currentConfig = getCodeeConfig()
+	const updatedAutocomplete = currentConfig.autocomplete.map((item) =>
+		item.provider === config.provider
+			? {
+					...item,
+					...config,
+					apiBase: config.apiBase ? config.apiBase : AesUtil.aesDecrypt(item.apiBase),
+					apiKey: config.apiKey ? config.apiKey : AesUtil.aesDecrypt(item.apiKey),
+				}
+			: item,
+	)
 	updateCodeeConfig({
-		autocomplete: {
-			...currentConfig.autocomplete,
-			...config,
-		},
+		autocomplete: updatedAutocomplete,
+		currentCompleteProvider: config.provider,
 	})
 }
 
@@ -86,7 +151,7 @@ export function getLanguageConfig(): string {
 }
 
 export function updateLanguageConfig(language: string): void {
-	updateCodeeConfig({ language })
+	updateCodeeConfig({ language }, 1)
 }
 
 export function getAdvancedConfig() {
@@ -96,10 +161,13 @@ export function getAdvancedConfig() {
 
 export function updateAdvancedConfig(advanced: Partial<CodeeConfig["advanced"]>): void {
 	const currentConfig = getCodeeConfig()
-	updateCodeeConfig({
-		advanced: {
-			...currentConfig.advanced,
-			...advanced,
+	updateCodeeConfig(
+		{
+			advanced: {
+				...currentConfig.advanced,
+				...advanced,
+			},
 		},
-	})
+		2,
+	)
 }

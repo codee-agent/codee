@@ -1,9 +1,9 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js"
-import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js"
+import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js"
-import { z } from "zod"
 import { McpServer } from "@shared/mcp"
+import { z } from "zod"
 import { ServerConfigSchema } from "./schemas"
 
 export type Transport = StdioClientTransport | SSEClientTransport | StreamableHTTPClientTransport
@@ -17,7 +17,3 @@ export type McpConnection = {
 export type McpTransportType = "stdio" | "sse" | "http"
 
 export type McpServerConfig = z.infer<typeof ServerConfigSchema>
-export interface CodeIndexStateUpdate {
-	status?: "success" | "no_workspace" | "indexing" | "error" | "disabled" | "downloadError"
-	percent?: number
-}

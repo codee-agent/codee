@@ -4,6 +4,7 @@ import { ensureRulesDirectoryExists } from './disk';
 import { refreshClineRulesToggles } from "@core/context/instructions/user-instructions/cline-rules"
 import * as vscode from 'vscode';
 import * as os from 'os';
+import { Controller } from "@/core/controller"
 
 const memoryBankFileName = 'memory_bank.md';
 let memoryBankFilePath: string;
@@ -46,7 +47,7 @@ export async function rulesFileWrite(content: string): Promise<void> {
  * Checks if memory_bank.md is activated
  * @returns Promise resolving to boolean indicating activation status
  */
-export async function rulesFileIsActivated(context: vscode.ExtensionContext): Promise<boolean> {
+export async function rulesFileIsActivated(context: Controller): Promise<boolean> {
     const cwd = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || path.join(os.homedir(), 'Desktop');
     const { globalToggles } = await refreshClineRulesToggles(context, cwd);
     return globalToggles[memoryBankFilePath] === true;

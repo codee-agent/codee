@@ -1,37 +1,26 @@
-import { useCallback, useEffect, useState } from "react"
-import { useEvent } from "react-use"
-import { ExtensionMessage } from "@shared/ExtensionMessage"
+import { Boolean, EmptyRequest } from "@shared/proto/cline/common"
+import { useEffect } from "react"
+import AccountView from "./components/account/AccountView"
 import ChatView from "./components/chat/ChatView"
 import HistoryView from "./components/history/HistoryView"
+import McpView from "./components/mcp/configuration/McpConfigurationView"
 import SettingsView from "./components/settings/SettingsView"
 import WelcomeView from "./components/welcome/WelcomeView"
-import AccountView from "./components/account/AccountView"
+import { useClineAuth } from "./context/ClineAuthContext"
 import { useExtensionState } from "./context/ExtensionStateContext"
-import { UiServiceClient } from "./services/grpc-client"
-import McpView from "./components/mcp/configuration/McpConfigurationView"
 import { Providers } from "./Providers"
-import { Boolean, EmptyRequest } from "@shared/proto/common"
-import { WebviewProviderType } from "@shared/webview/types"
+import { BusinessServiceClient, UiServiceClient } from "./services/grpc-client"
 import i18n from "./i18n"
 import { vscode } from "./utils/vscode"
 
 const AppContent = () => {
 	useEffect(() => {
 		// 请求语言配置
-		vscode.postMessage({
-			type: "getLanguageConfig",
-		})
+		BusinessServiceClient.getCurrentLanguage(EmptyRequest.create())
+			.then(response => {
+				i18n.changeLanguage(response.value || "en")
+			})
 	}, [])
-	const handleMessage = useCallback((e: MessageEvent) => {
-		const message: ExtensionMessage = e.data
-		switch (message.type) {
-			case "languageConfig":
-				// 更新语言
-				i18n.changeLanguage(message.language || "en")
-				break
-		}
-	}, [])
-	useEvent("message", handleMessage)
 
 	const {
 		didHydrateState,
@@ -53,6 +42,8 @@ const AppContent = () => {
 		hideAnnouncement,
 	} = useExtensionState()
 
+	const { clineUser, organizations, activeOrganization } = useClineAuth()
+
 	useEffect(() => {
 		if (shouldShowAnnouncement) {
 			setShowAnnouncement(true)
@@ -66,32 +57,34 @@ const AppContent = () => {
 					console.error("Failed to acknowledge announcement:", error)
 				})
 		}
-	}, [shouldShowAnnouncement])
+	}, [shouldShowAnnouncement, setShouldShowAnnouncement, setShowAnnouncement])
 
 	if (!didHydrateState) {
 		return null
 	}
 
+	if (showWelcome) {
+		return <WelcomeView />
+	}
+
 	return (
-		<>
-			{showWelcome ? (
-				<WelcomeView />
-			) : (
-				<>
-					{showSettings && <SettingsView onDone={hideSettings} />}
-					{showHistory && <HistoryView onDone={hideHistory} />}
-					{showMcp && <McpView initialTab={mcpTab} onDone={closeMcpView} />}
-					{showAccount && <AccountView onDone={hideAccount} />}
-					{/* Do not conditionally load ChatView, it's expensive and there's state we don't want to lose (user input, disableInput, askResponse promise, etc.) */}
-					<ChatView
-						showHistoryView={navigateToHistory}
-						isHidden={showSettings || showHistory || showMcp || showAccount}
-						showAnnouncement={showAnnouncement}
-						hideAnnouncement={hideAnnouncement}
-					/>
-				</>
+		<div className="flex h-screen w-full flex-col">
+			{showSettings && <SettingsView onDone={hideSettings} />}
+			{showHistory && <HistoryView onDone={hideHistory} />}
+			{showMcp && <McpView initialTab={mcpTab} onDone={closeMcpView} />}
+			{showAccount && (
+				<AccountView
+					onDone={hideAccount}
+				/>
 			)}
-		</>
+			{/* Do not conditionally load ChatView, it's expensive and there's state we don't want to lose (user input, disableInput, askResponse promise, etc.) */}
+			<ChatView
+				hideAnnouncement={hideAnnouncement}
+				isHidden={showSettings || showHistory || showMcp || showAccount}
+				showAnnouncement={showAnnouncement}
+				showHistoryView={navigateToHistory}
+			/>
+		</div>
 	)
 }
 

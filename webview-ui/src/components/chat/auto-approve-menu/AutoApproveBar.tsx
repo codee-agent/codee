@@ -1,7 +1,7 @@
-import { useRef, useState, useMemo } from "react"
+import { useMemo, useRef, useState } from "react"
+import { CODE_BLOCK_BG_COLOR } from "@/components/common/CodeBlock"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { useAutoApproveActions } from "@/hooks/useAutoApproveActions"
-import { CODE_BLOCK_BG_COLOR } from "@/components/common/CodeBlock"
 import { getAsVar, VSC_TITLEBAR_INACTIVE_FOREGROUND } from "@/utils/vscStyles"
 import AutoApproveMenuItem from "./AutoApproveMenuItem"
 import AutoApproveModal from "./AutoApproveModal"
@@ -26,15 +26,17 @@ const AutoApproveBar = ({ style }: AutoApproveBarProps) => {
 	const renderFavoritedItem = (favId: string) => {
 		const actions = [...ACTION_METADATA.flatMap((a) => [a, a.subAction]), NOTIFICATIONS_SETTING]
 		const action = actions.find((a) => a?.id === favId)
-		if (!action) return null
+		if (!action) {
+			return null
+		}
 
 		return (
 			<AutoApproveMenuItem
 				action={action}
+				condensed={true}
 				isChecked={isChecked}
 				isFavorited={isFavorited}
 				onToggle={updateAction}
-				condensed={true}
 				showIcon={false}
 			/>
 		)
@@ -49,7 +51,7 @@ const AutoApproveBar = ({ style }: AutoApproveBarProps) => {
 			return ACTION_METADATA.flatMap((a) => [a, a.subAction]).find((a) => a?.id === action)
 		})
 
-		let minusFavorites = enabledActions.filter((action) => !favorites.includes(action?.id ?? "") && action?.shortName)
+		const minusFavorites = enabledActions.filter((action) => !favorites.includes(action?.id ?? "") && action?.shortName)
 
 		if (notificationsEnabled) {
 			minusFavorites.push(NOTIFICATIONS_SETTING)
@@ -64,7 +66,7 @@ const AutoApproveBar = ({ style }: AutoApproveBarProps) => {
 			) : null,
 			...minusFavorites.map((action, index) => (
 				<span className="text-[color:var(--vscode-foreground-muted)] opacity-60" key={action?.id}>
-					{action ? t(action.shortName) : "Null"}
+					{action?.shortName}
 					{index < minusFavorites.length - 1 && ","}
 				</span>
 			)),
@@ -81,11 +83,11 @@ const AutoApproveBar = ({ style }: AutoApproveBarProps) => {
 				...style,
 			}}>
 			<div
-				ref={buttonRef}
 				className="cursor-pointer py-[8px] pr-[2px] flex items-center justify-between gap-[8px]"
 				onClick={() => {
 					setIsModalVisible((prev) => !prev)
-				}}>
+				}}
+				ref={buttonRef}>
 				<div
 					className="flex flex-nowrap items-center overflow-x-auto gap-[4px] whitespace-nowrap"
 					style={{
@@ -104,11 +106,11 @@ const AutoApproveBar = ({ style }: AutoApproveBarProps) => {
 			</div>
 
 			<AutoApproveModal
-				isVisible={isModalVisible}
-				setIsVisible={setIsModalVisible}
-				buttonRef={buttonRef}
 				ACTION_METADATA={ACTION_METADATA}
+				buttonRef={buttonRef}
+				isVisible={isModalVisible}
 				NOTIFICATIONS_SETTING={NOTIFICATIONS_SETTING}
+				setIsVisible={setIsModalVisible}
 			/>
 		</div>
 	)

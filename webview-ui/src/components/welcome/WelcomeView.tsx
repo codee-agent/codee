@@ -1,18 +1,15 @@
+import { BooleanRequest, EmptyRequest } from "@shared/proto/cline/common"
 import { VSCodeButton, VSCodeLink } from "@vscode/webview-ui-toolkit/react"
-import { useEffect, useState, memo } from "react"
-import { useExtensionState } from "@/context/ExtensionStateContext"
-import { validateApiConfiguration } from "@/utils/validate"
-import { vscode } from "@/utils/vscode"
-import ApiOptions from "@/components/settings/ApiOptions"
+import { memo, useEffect, useState } from "react"
 import ClineLogoWhite from "@/assets/ClineLogoWhite"
-import { AccountServiceClient, ModelsServiceClient } from "@/services/grpc-client"
-import { EmptyRequest } from "@shared/proto/common"
-import { UpdateApiConfigurationRequest } from "@shared/proto/models"
-import { convertApiConfigurationToProto } from "@shared/proto-conversions/models/api-configuration-conversion"
+import ApiOptions from "@/components/settings/ApiOptions"
+import { useExtensionState } from "@/context/ExtensionStateContext"
+import { AccountServiceClient, StateServiceClient } from "@/services/grpc-client"
+import { validateApiConfiguration } from "@/utils/validate"
 import { useTranslation, Trans } from "react-i18next"
 
 const WelcomeView = memo(() => {
-	const { apiConfiguration } = useExtensionState()
+	const { apiConfiguration, mode } = useExtensionState()
 	const [apiErrorMessage, setApiErrorMessage] = useState<string | undefined>(undefined)
 	const [showApiOptions, setShowApiOptions] = useState(false)
 	const { t } = useTranslation()
@@ -26,22 +23,16 @@ const WelcomeView = memo(() => {
 	}
 
 	const handleSubmit = async () => {
-		if (apiConfiguration) {
-			try {
-				await ModelsServiceClient.updateApiConfigurationProto(
-					UpdateApiConfigurationRequest.create({
-						apiConfiguration: convertApiConfigurationToProto(apiConfiguration),
-					}),
-				)
-			} catch (error) {
-				console.error("Failed to update API configuration:", error)
-			}
+		try {
+			await StateServiceClient.setWelcomeViewCompleted(BooleanRequest.create({ value: true }))
+		} catch (error) {
+			console.error("Failed to update API configuration or complete welcome view:", error)
 		}
 	}
 
 	useEffect(() => {
-		setApiErrorMessage(validateApiConfiguration(apiConfiguration))
-	}, [apiConfiguration])
+		setApiErrorMessage(validateApiConfiguration(mode, apiConfiguration))
+	}, [apiConfiguration, mode])
 
 	return (
 		<div className="fixed inset-0 p-0 flex flex-col">
@@ -82,9 +73,9 @@ const WelcomeView = memo(() => {
 				<div className="mt-4.5">
 					{showApiOptions && (
 						<div>
-							<ApiOptions showModelOptions={false} />
-							<VSCodeButton onClick={handleSubmit} disabled={disableLetsGoButton} className="mt-0.75">
-								{t("chat.welcome.letsGo")}
+							<ApiOptions currentMode={mode} showModelOptions={false} />
+							<VSCodeButton className="mt-0.75" disabled={disableLetsGoButton} onClick={handleSubmit}>
+								Let's go!
 							</VSCodeButton>
 						</div>
 					)}
