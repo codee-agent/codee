@@ -1,7 +1,9 @@
 import { UpdateSettingsRequest } from "@shared/proto/cline/state"
+import { EmptyRequest, SetAutoCompletionRequest, UpdateApiConfigurationRequest } from "@shared/proto/index.cline"
 import { Mode } from "@shared/storage/types"
 import { VSCodeCheckbox, VSCodeDropdown, VSCodeOption, VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 import { useEffect, useState } from "react"
+import { useTranslation } from "react-i18next"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { BusinessServiceClient, StateServiceClient } from "@/services/grpc-client"
 import { TabButton } from "../../mcp/configuration/McpConfigurationView"
@@ -9,8 +11,6 @@ import ApiOptions from "../ApiOptions"
 import Section from "../Section"
 import { syncModeConfigurations } from "../utils/providerUtils"
 import { useApiConfigurationHandlers } from "../utils/useApiConfigurationHandlers"
-import { useTranslation } from "react-i18next"
-import { EmptyRequest, SetAutoCompletionRequest, UpdateApiConfigurationRequest } from "@shared/proto/index.cline"
 
 interface ApiConfigurationSectionProps {
 	renderSectionHeader: (tabId: string) => JSX.Element | null
@@ -22,7 +22,7 @@ const ApiConfigurationSection = ({ renderSectionHeader }: ApiConfigurationSectio
 	const [currentTab, setCurrentTab] = useState<Mode>(mode)
 	const [autocompleteConfig, setAutocompleteConfig] = useState({
 		autocomplete: {
-			provider: "openai",
+			provider: "Openai Compatible",
 			title: "autocomplete-coder",
 			apiKey: "",
 			model: "",
@@ -39,46 +39,47 @@ const ApiConfigurationSection = ({ renderSectionHeader }: ApiConfigurationSectio
 				apiKey: autocompleteConfig.autocomplete.apiKey,
 				enable: autocompleteConfig.autocomplete.enable,
 				apiBase: autocompleteConfig.autocomplete.apiBase,
-			}
-		});
-		BusinessServiceClient.setAutoCompletion(request).catch(error => {
-			console.error("Failed to update auto-completion settings:", error);
-		});
+			},
+		})
+		BusinessServiceClient.setAutoCompletion(request).catch((error) => {
+			console.error("Failed to update auto-completion settings:", error)
+		})
 	}
 
 	// 在现有代码中添加这个useEffect
 	useEffect(() => {
 		if (autocompleteConfig && autocompleteConfig.autocomplete.apiKey.length > 0) {
-			updateAutoComplete();
+			updateAutoComplete()
 		}
-	}, [autocompleteConfig]);
+	}, [autocompleteConfig])
 
 	useEffect(() => {
 		// Load initial auto-completion configuration
 		BusinessServiceClient.getAutoCompletion(EmptyRequest.create())
-			.then(response => {
-				console.log("@@@@@@@,getAutoCompletion:",response)
+			.then((response) => {
+				console.log("@@@@@@@,getAutoCompletion:", response)
 				if (response.autoCompletion) {
 					setAutocompleteConfig({
 						autocomplete: {
-							provider: response.autoCompletion.provider ||"openai",
-							title: response.autoCompletion.title ||"autocomplete-coder",
+							provider: response.autoCompletion.provider || "Openai Compatible",
+							title: response.autoCompletion.title || "autocomplete-coder",
 							apiKey: response.autoCompletion.apiKey || "",
 							model: response.autoCompletion.model || "",
 							apiBase: response.autoCompletion.apiBase || "",
 							enable: response.autoCompletion.enable || false,
 						},
-					});
+					})
 				}
 			})
-			.catch(error => {
-				console.error("Failed to get auto-completion settings:", error);
-			});
-		 StateServiceClient.updateSettings(
-									UpdateSettingsRequest.create({
-										planActSeparateModelsSetting: false,
-									}));
-	}, []);
+			.catch((error) => {
+				console.error("Failed to get auto-completion settings:", error)
+			})
+		StateServiceClient.updateSettings(
+			UpdateSettingsRequest.create({
+				planActSeparateModelsSetting: false,
+			}),
+		)
+	}, [])
 
 	const { handleFieldsChange } = useApiConfigurationHandlers()
 	return (
@@ -151,19 +152,15 @@ const ApiConfigurationSection = ({ renderSectionHeader }: ApiConfigurationSectio
 					<details
 						onToggle={(e) => {
 							if (e.currentTarget.open) {
-								
 							}
 						}}>
-						<summary className="cursor-pointer font-medium">
-							{t("settings.autocomplete.title")}
-						</summary>
+						<summary className="cursor-pointer font-medium">{t("settings.autocomplete.title")}</summary>
 						<div className="mt-3 space-y-3">
 							<VSCodeDropdown>
-								<VSCodeOption value="openai">OpenAI Compatible</VSCodeOption>
+								<VSCodeOption value="Openai Compatible">OpenAI Compatible</VSCodeOption>
 							</VSCodeDropdown>
 
 							<VSCodeTextField
-								value={autocompleteConfig.autocomplete.apiBase}
 								onInput={(e: any) => {
 									// if (e.target.value !== autocompleteConfig.autocomplete.apiBase) {
 									// 	setHasUnsavedChanges(true) //huqb
@@ -176,13 +173,12 @@ const ApiConfigurationSection = ({ renderSectionHeader }: ApiConfigurationSectio
 										},
 									})
 								}}
-								placeholder={t("settings.autocomplete.apiBase")}>
+								placeholder={t("settings.autocomplete.apiBase")}
+								value={autocompleteConfig.autocomplete.apiBase}>
 								{t("settings.autocomplete.apiBase")}
 							</VSCodeTextField>
 
 							<VSCodeTextField
-								value={autocompleteConfig.autocomplete.apiKey}
-								type="password"
 								onInput={(e: any) => {
 									// if (e.target.value !== autocompleteConfig.autocomplete.apiKey) {
 									// 	setHasUnsavedChanges(true) //huqb
@@ -195,12 +191,13 @@ const ApiConfigurationSection = ({ renderSectionHeader }: ApiConfigurationSectio
 										},
 									})
 								}}
-								placeholder={t("settings.autocomplete.apiKey")}>
+								placeholder={t("settings.autocomplete.apiKey")}
+								type="password"
+								value={autocompleteConfig.autocomplete.apiKey}>
 								{t("settings.autocomplete.apiKey")}
 							</VSCodeTextField>
 
 							<VSCodeTextField
-								value={autocompleteConfig.autocomplete.model}
 								onInput={(e: any) => {
 									// if (e.target.value !== autocompleteConfig.autocomplete.model) {
 									// 	setHasUnsavedChanges(true) //huqb
@@ -213,7 +210,8 @@ const ApiConfigurationSection = ({ renderSectionHeader }: ApiConfigurationSectio
 										},
 									})
 								}}
-								placeholder={t("settings.autocomplete.model")}>
+								placeholder={t("settings.autocomplete.model")}
+								value={autocompleteConfig.autocomplete.model}>
 								{t("settings.autocomplete.model")}
 							</VSCodeTextField>
 

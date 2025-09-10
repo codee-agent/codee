@@ -1,10 +1,10 @@
-import { useRef, useState, useEffect } from "react"
-import { useClickAway, useWindowSize } from "react-use"
-import { VSCodeButton } from "@vscode/webview-ui-toolkit/react"
-import { CODE_BLOCK_BG_COLOR } from "@/components/common/CodeBlock"
-import { useTranslation } from "react-i18next"
-import { BusinessServiceClient } from "@/services/grpc-client"
 import { EmptyRequest, StringRequest } from "@shared/proto/cline/common"
+import { VSCodeButton } from "@vscode/webview-ui-toolkit/react"
+import { useEffect, useRef, useState } from "react"
+import { useTranslation } from "react-i18next"
+import { useClickAway, useWindowSize } from "react-use"
+import { CODE_BLOCK_BG_COLOR } from "@/components/common/CodeBlock"
+import { BusinessServiceClient } from "@/services/grpc-client"
 import type { ChatState } from "../chat-view/types/chatTypes"
 
 interface AdvancedAbilitiesModalProps {
@@ -22,51 +22,48 @@ const AdvancedAbilitiesModal: React.FC<AdvancedAbilitiesModalProps> = ({
 	buttonRef,
 	hasMemoryBank,
 	setHasMemoryBank,
-	chatState
+	chatState,
 }) => {
 	const { t } = useTranslation()
 	const modalRef = useRef<HTMLDivElement>(null)
 	const { width: viewportWidth, height: viewportHeight } = useWindowSize()
 	const [arrowPosition, setArrowPosition] = useState(0)
 	const [menuPosition, setMenuPosition] = useState(0)
-	const {
-		setInputValue,
-		sendingDisabled,
-		setIsTextAreaFocused
-	} = chatState
-
+	const { setInputValue, sendingDisabled, setIsTextAreaFocused } = chatState
 
 	const handleMemorybank = (text: string) => {
-    BusinessServiceClient.setMemoryBank(StringRequest.create({value: text})).then((response) => {
-      console.log('handleMemorybank', response)
-      if (response.value) {
-        const initPrompt =
+		BusinessServiceClient.setMemoryBank(StringRequest.create({ value: text }))
+			.then(async (response) => {
+				if (response.value) {
+					const language = await BusinessServiceClient.getCurrentLanguage(EmptyRequest.create())
+					let initPrompt =
 						response.value == "init"
 							? "Please carefully read the relevant introduction documents of this project then initialize memory bank"
 							: response.value == "update"
 								? "update memory bank"
 								: "follow your custom instructions"
-				setInputValue(initPrompt)
-				const sendButton = document.querySelector('[data-testid="send-button"]') as HTMLElement | null
-				console.log('sendButton', sendButton)
-				setTimeout(() => {
-					if (!sendingDisabled) {
-						setIsTextAreaFocused(false)
-						sendButton?.click()
-					}
-				}, 0)
-      }
-      setIsVisible(false)
-    }).catch(() => {
-      setIsVisible(false)
-    })
+					initPrompt += language.value === "zh-CN" ? ", 请用中文生成文档" : ", please use English"
+					setInputValue(initPrompt)
+					const sendButton = document.querySelector('[data-testid="send-button"]') as HTMLElement | null
+					setTimeout(() => {
+						if (!sendingDisabled) {
+							setIsTextAreaFocused(false)
+							sendButton?.click()
+						}
+					}, 0)
+				}
+				setIsVisible(false)
+			})
+			.catch(() => {
+				setIsVisible(false)
+			})
 	}
 
 	useEffect(() => {
 		if (isVisible) {
-			BusinessServiceClient.getMemoryBank(EmptyRequest.create()).then(response => {
-        setHasMemoryBank(response.value ?? false)
-      })
+			BusinessServiceClient.getMemoryBank(EmptyRequest.create()).then((response) => {
+				setHasMemoryBank(response.value ?? false)
+			})
 		}
 	}, [isVisible])
 

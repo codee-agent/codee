@@ -1,7 +1,7 @@
 import * as fs from "fs"
 import * as path from "path"
-import { getContinueGlobalPath } from "./paths"
 import { AesUtil } from "./aesutil"
+import { getContinueGlobalPath } from "./paths"
 
 function getCodeeConfigJsonPath(): string {
 	const p = path.join(getContinueGlobalPath(), "codeeConfig.json")
@@ -30,7 +30,7 @@ export interface CodeeConfig {
 const DEFAULT_CONFIG: CodeeConfig = {
 	autocomplete: [
 		{
-			provider: "Openai Compatiable",
+			provider: "Openai Compatible",
 			title: "autocomplete-coder",
 			model: "",
 			apiKey: "",
@@ -46,11 +46,50 @@ const DEFAULT_CONFIG: CodeeConfig = {
 			enable: false,
 		},
 	],
-	currentCompleteProvider: "Openai Compatiable",
+	currentCompleteProvider: "Openai Compatible",
 	advanced: {
 		memorybank: false,
 	},
 	language: "en",
+}
+
+function normalizeProviderName(provider: string): string {
+	return provider?.replace("Compatiable", "Compatible")
+}
+
+function migrateLegacyConfig(config: any): CodeeConfig {
+	if (config?.currentCompleteProvider) {
+		config.currentCompleteProvider = normalizeProviderName(config.currentCompleteProvider)
+	}
+	if (!config.autocomplete || Array.isArray(config.autocomplete)) {
+		if (Array.isArray(config.autocomplete)) {
+			config.autocomplete = config.autocomplete.map((item: any) => ({
+				...item,
+				provider: normalizeProviderName(item.provider),
+			}))
+		}
+		return config
+	}
+
+	return {
+		...config,
+		autocomplete: [
+			{
+				...config.autocomplete,
+				provider: "Openai Compatible",
+				title: config.autocomplete.title || "autocomplete-coder",
+			},
+			{
+				provider: "codee",
+				title: "autocomplete-coder",
+				model: "",
+				apiKey: "",
+				apiBase: "",
+				enable: false,
+			},
+		],
+		currentCompleteProvider: "Openai Compatible",
+	}
 }
 
 export function getCodeeConfig(): CodeeConfig {
@@ -60,29 +99,14 @@ export function getCodeeConfig(): CodeeConfig {
 		return DEFAULT_CONFIG
 	}
 	const config = JSON.parse(fs.readFileSync(configPath, "utf8"))
-	if (!config.currentCompleteProvider) {
-		config.currentCompleteProvider = "Openai Compatiable"
-	}
-	if (!Array.isArray(config.autocomplete)) {
-		config.autocomplete = [
-			config.autocomplete,
-			{
-				provider: "codee",
-				title: "autocomplete-coder",
-				model: "",
-				apiKey: "",
-				apiBase: "",
-				enable: false,
-			},
-		]
-	}
-	return config
+	const migratedConfig = migrateLegacyConfig(config)
+	return migratedConfig
 }
 
 //type:0 自动补全 1 语言设置 2 高级设置
 export function updateCodeeConfig(config: Partial<CodeeConfig>, type: number = 0): void {
 	const currentConfig = getCodeeConfig()
-	let newConfig = { ...currentConfig, ...config }
+	const newConfig = { ...currentConfig, ...config }
 
 	if (type === 0 && newConfig.autocomplete) {
 		const autocompleteConfig = newConfig.autocomplete.find((item) => item.provider === newConfig.currentCompleteProvider)
@@ -104,7 +128,10 @@ export function updateCodeeConfig(config: Partial<CodeeConfig>, type: number = 0
 
 export function getAutocompleteConfig() {
 	const config = getCodeeConfig()
-	const autocompleteConfig = config.autocomplete.find((item) => item.provider === config.currentCompleteProvider)
+	const normalizedProvider = normalizeProviderName(config.currentCompleteProvider)
+	const autocompleteConfig = config.autocomplete.find(
+		(item) => normalizeProviderName(item.provider).toLowerCase() === normalizedProvider.toLowerCase(),
+	)
 	if (!autocompleteConfig) {
 		throw new Error("No autocomplete config found for current provider")
 	}
