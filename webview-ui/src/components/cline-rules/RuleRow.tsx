@@ -1,8 +1,8 @@
 import { StringRequest } from "@shared/proto/cline/common"
 import { DeleteRuleFileRequest } from "@shared/proto-conversions/file/rule-files-conversion"
 import { VSCodeButton } from "@vscode/webview-ui-toolkit/react"
-import { FileServiceClient } from "@/services/grpc-client"
 import { useTranslation } from "react-i18next"
+import { FileServiceClient } from "@/services/grpc-client"
 
 const RuleRow: React.FC<{
 	rulePath: string
@@ -111,18 +111,18 @@ const RuleRow: React.FC<{
 					</div>
 					<VSCodeButton
 						appearance="icon"
-						aria-label={t("CodaiRules.editRuleFile")}
-						title={t("CodaiRules.editRuleFile")}
+						aria-label={t("CodeeRules.editRuleFile")}
 						onClick={handleEditClick}
-						style={{ height: "20px" }}>
+						style={{ height: "20px" }}
+						title={t("CodeeRules.editRuleFile")}>
 						<span className="codicon codicon-edit" style={{ fontSize: "14px" }} />
 					</VSCodeButton>
 					<VSCodeButton
 						appearance="icon"
-						aria-label={t("CodaiRules.deleteRuleFile")}
-						title={t("CodaiRules.deleteRuleFile")}
+						aria-label={t("CodeeRules.deleteRuleFile")}
 						onClick={handleDeleteClick}
-						style={{ height: "20px" }}>
+						style={{ height: "20px" }}
+						title={t("CodeeRules.deleteRuleFile")}>
 						<span className="codicon codicon-trash" style={{ fontSize: "14px" }} />
 					</VSCodeButton>
 				</div>

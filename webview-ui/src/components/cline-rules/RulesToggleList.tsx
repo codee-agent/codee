@@ -1,6 +1,6 @@
+import { useTranslation } from "react-i18next"
 import NewRuleRow from "./NewRuleRow"
 import RuleRow from "./RuleRow"
-import { useTranslation } from "react-i18next"
 
 const RulesToggleList = ({
 	rules,
@@ -48,7 +48,7 @@ const RulesToggleList = ({
 				<>
 					{showNoRules && (
 						<div className="flex flex-col items-center gap-3 my-3 text-[var(--vscode-descriptionForeground)]">
-							{ruleType === "workflow" ? t("CodaiRules.noWorkflowsFound") : t("CodaiRules.noRulesFound")}
+							{ruleType === "workflow" ? t("CodeeRules.noWorkflowsFound") : t("CodeeRules.noRulesFound")}
 						</div>
 					)}
 					{showNewRule && <NewRuleRow isGlobal={isGlobal} ruleType={ruleType} />}

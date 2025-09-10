@@ -1,9 +1,9 @@
 import { CreateRuleFileRequest } from "@shared/proto-conversions/file/rule-files-conversion"
 import { VSCodeButton } from "@vscode/webview-ui-toolkit/react"
 import { useEffect, useRef, useState } from "react"
+import { useTranslation } from "react-i18next"
 import { useClickAway } from "react-use"
 import { FileServiceClient } from "@/services/grpc-client"
-import { useTranslation } from "react-i18next"
 
 interface NewRuleRowProps {
 	isGlobal: boolean
@@ -54,7 +54,7 @@ const NewRuleRow: React.FC<NewRuleRowProps> = ({ isGlobal, ruleType }) => {
 			const extension = getExtension(trimmedFilename)
 
 			if (!isValidExtension(extension)) {
-				setError(t("CodaiRules.invalidExtension"))
+				setError(t("CodeeRules.invalidExtension"))
 				return
 			}
 
@@ -105,8 +105,8 @@ const NewRuleRow: React.FC<NewRuleRowProps> = ({ isGlobal, ruleType }) => {
 							onKeyDown={handleKeyDown}
 							placeholder={
 								ruleType === "workflow"
-									? t("CodaiRules.workflowNamePlaceholder")
-									: t("CodaiRules.ruleNamePlaceholder")
+									? t("CodeeRules.workflowNamePlaceholder")
+									: t("CodeeRules.ruleNamePlaceholder")
 							}
 							ref={inputRef}
 							style={{
@@ -119,10 +119,10 @@ const NewRuleRow: React.FC<NewRuleRowProps> = ({ isGlobal, ruleType }) => {
 						<div className="flex items-center ml-2 space-x-2">
 							<VSCodeButton
 								appearance="icon"
-								type="submit"
-								aria-label={t("CodaiRules.createRuleFile")}
-								title={t("CodaiRules.createRuleFile")}
-								style={{ padding: "0px" }}>
+								aria-label={t("CodeeRules.createRuleFile")}
+								style={{ padding: "0px" }}
+								title={t("CodeeRules.createRuleFile")}
+								type="submit">
 								<span className="codicon codicon-add text-[14px]" />
 							</VSCodeButton>
 						</div>
@@ -130,18 +130,18 @@ const NewRuleRow: React.FC<NewRuleRowProps> = ({ isGlobal, ruleType }) => {
 				) : (
 					<>
 						<span className="flex-1 text-[var(--vscode-descriptionForeground)] bg-[var(--vscode-input-background)] italic text-xs">
-							{ruleType === "workflow" ? t("CodaiRules.newWorkflowFile") : t("CodaiRules.newRuleFile")}
+							{ruleType === "workflow" ? t("CodeeRules.newWorkflowFile") : t("CodeeRules.newRuleFile")}
 						</span>
 						<div className="flex items-center ml-2 space-x-2">
 							<VSCodeButton
 								appearance="icon"
-								aria-label={t("CodaiRules.newRuleFileButton")}
-								title={t("CodaiRules.newRuleFileButton")}
+								aria-label={t("CodeeRules.newRuleFileButton")}
 								onClick={(e) => {
 									e.stopPropagation()
 									setIsExpanded(true)
 								}}
-								style={{ padding: "0px" }}>
+								style={{ padding: "0px" }}
+								title={t("CodeeRules.newRuleFileButton")}>
 								<span className="codicon codicon-add text-[14px]" />
 							</VSCodeButton>
 						</div>
