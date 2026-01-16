@@ -16,7 +16,7 @@
 </div>
 
 
-大家好，Codee（扣迪）是一款AI编程的工具，这个名字取自Code 和 engineer 这两个单词。扣迪将是你开发工作中最得力的软件工程师！
+<a href="https://github.com/codee-agent/codee" target="_blank" style="text-decoration: underline;"><strong>扣迪(Codee)</strong></a>是一款AI编程的工具，这个名字取自Code 和 engineer 这两个单词。扣迪将是你开发工作中最得力的软件工程师！
 
 ## Codee的主要功能
 
