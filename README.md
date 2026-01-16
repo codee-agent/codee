@@ -14,7 +14,7 @@
 </tbody>
 </table>
 </div>
-Codee (**/koʊˈdiː/**) is an AI-powered programming tool. The name is derived from the words "Code" and "engineer".It is your professional code engineer!
+<a href="https://github.com/codee-agent/codee" target="_blank" style="text-decoration: underline;"><strong>Codee(koʊˈdiː)</strong></a>  is an AI-powered programming tool. The name is derived from the words "Code" and "engineer".It is your professional code engineer!
 
 ## Key Features of Codee
 
