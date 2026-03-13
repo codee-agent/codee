@@ -3,6 +3,7 @@ import fs from "fs/promises"
 import path from "path"
 import { HostProvider } from "@/hosts/host-provider"
 import { ShowMessageRequest, ShowMessageType } from "@/shared/proto/host/window"
+import { Logger } from "@/shared/services/Logger"
 import { fileExistsAtPath } from "../../../utils/fs"
 import { Controller } from ".."
 
@@ -18,7 +19,7 @@ export async function deleteAllTaskHistory(controller: Controller): Promise<Dele
 		await controller.clearTask()
 
 		// Get existing task history
-		const taskHistory = controller.cacheService.getGlobalStateKey("taskHistory")
+		const taskHistory = controller.stateManager.getGlobalStateKey("taskHistory")
 		const totalTasks = taskHistory.length
 
 		const userChoice = (
@@ -47,17 +48,17 @@ export async function deleteAllTaskHistory(controller: Controller): Promise<Dele
 
 			// If there are favorited tasks, update state
 			if (favoritedTasks.length > 0) {
-				controller.cacheService.setGlobalState("taskHistory", favoritedTasks)
+				controller.stateManager.setGlobalState("taskHistory", favoritedTasks)
 
 				// Delete non-favorited task directories
 				const preserveTaskIds = favoritedTasks.map((task) => task.id)
-				await cleanupTaskFiles(controller, preserveTaskIds)
+				await cleanupTaskFiles(preserveTaskIds)
 
 				// Update webview
 				try {
 					await controller.postStateToWebview()
 				} catch (webviewErr) {
-					console.error("Error posting to webview:", webviewErr)
+					Logger.error("Error posting to webview:", webviewErr)
 				}
 
 				return DeleteAllTaskHistoryCount.create({
@@ -87,17 +88,17 @@ export async function deleteAllTaskHistory(controller: Controller): Promise<Dele
 		}
 
 		// Delete everything (not preserving favorites)
-		controller.cacheService.setGlobalState("taskHistory", [])
+		controller.stateManager.setGlobalState("taskHistory", [])
 
 		try {
 			// Remove all contents of tasks directory
-			const taskDirPath = path.join(controller.context.globalStorageUri.fsPath, "tasks")
+			const taskDirPath = path.join(HostProvider.get().globalStorageFsPath, "tasks")
 			if (await fileExistsAtPath(taskDirPath)) {
 				await fs.rm(taskDirPath, { recursive: true, force: true })
 			}
 
 			// Remove checkpoints directory contents
-			const checkpointsDirPath = path.join(controller.context.globalStorageUri.fsPath, "checkpoints")
+			const checkpointsDirPath = path.join(HostProvider.get().globalStorageFsPath, "checkpoints")
 			if (await fileExistsAtPath(checkpointsDirPath)) {
 				await fs.rm(checkpointsDirPath, { recursive: true, force: true })
 			}
@@ -112,14 +113,14 @@ export async function deleteAllTaskHistory(controller: Controller): Promise<Dele
 		try {
 			await controller.postStateToWebview()
 		} catch (webviewErr) {
-			console.error("Error posting to webview:", webviewErr)
+			Logger.error("Error posting to webview:", webviewErr)
 		}
 
 		return DeleteAllTaskHistoryCount.create({
 			tasksDeleted: totalTasks,
 		})
 	} catch (error) {
-		console.error("Error in deleteAllTaskHistory:", error)
+		Logger.error("Error in deleteAllTaskHistory:", error)
 		throw error
 	}
 }
@@ -127,23 +128,27 @@ export async function deleteAllTaskHistory(controller: Controller): Promise<Dele
 /**
  * Helper function to cleanup task files while preserving specified tasks
  */
-async function cleanupTaskFiles(controller: Controller, preserveTaskIds: string[]) {
-	const taskDirPath = path.join(controller.context.globalStorageUri.fsPath, "tasks")
+async function cleanupTaskFiles(preserveTaskIds: string[]) {
+	const taskDirPath = path.join(HostProvider.get().globalStorageFsPath, "tasks")
 
 	try {
 		if (await fileExistsAtPath(taskDirPath)) {
 			const taskDirs = await fs.readdir(taskDirPath)
-			console.debug(`[cleanupTaskFiles] Found ${taskDirs.length} task directories`)
+			Logger.debug(`[cleanupTaskFiles] Found ${taskDirs.length} task directories`)
 
 			// Delete only non-preserved task directories
 			for (const dir of taskDirs) {
 				if (!preserveTaskIds.includes(dir)) {
-					await fs.rm(path.join(taskDirPath, dir), { recursive: true, force: true })
+					// Task dir path is not workspace specific
+					await fs.rm(path.join(taskDirPath, dir), {
+						recursive: true,
+						force: true,
+					})
 				}
 			}
 		}
 	} catch (error) {
-		console.error("Error cleaning up task files:", error)
+		Logger.error("Error cleaning up task files:", error)
 	}
 
 	return true

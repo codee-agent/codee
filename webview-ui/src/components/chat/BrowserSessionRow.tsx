@@ -3,14 +3,15 @@ import { BrowserAction, BrowserActionResult, ClineMessage, ClineSayBrowserAction
 import { StringRequest } from "@shared/proto/cline/common"
 import { VSCodeButton } from "@vscode/webview-ui-toolkit/react"
 import deepEqual from "fast-deep-equal"
+import { ChevronDownIcon, ChevronRightIcon } from "lucide-react"
 import React, { CSSProperties, memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useSize } from "react-use"
 import styled from "styled-components"
 import { BrowserSettingsMenu } from "@/components/browser/BrowserSettingsMenu"
 import { ChatRowContent, ProgressIndicator } from "@/components/chat/ChatRow"
-import { CheckpointControls } from "@/components/common/CheckpointControls"
 import CodeBlock, { CODE_BLOCK_BG_COLOR } from "@/components/common/CodeBlock"
 import { useExtensionState } from "@/context/ExtensionStateContext"
+import { cn } from "@/lib/utils"
 import { FileServiceClient } from "@/services/grpc-client"
 
 interface BrowserSessionRowProps {
@@ -40,13 +41,6 @@ const urlBarContainerStyle: CSSProperties = {
 	display: "flex",
 	alignItems: "center",
 	gap: "4px",
-}
-const urlTextStyle: CSSProperties = {
-	textOverflow: "ellipsis",
-	overflow: "hidden",
-	whiteSpace: "nowrap",
-	width: "100%",
-	textAlign: "center",
 }
 const imgScreenshotStyle: CSSProperties = {
 	position: "absolute",
@@ -198,7 +192,8 @@ const BrowserSessionRow = memo((props: BrowserSessionRowProps) => {
 				message.say === "api_req_started" ||
 				message.say === "text" ||
 				message.say === "reasoning" ||
-				message.say === "browser_action"
+				message.say === "browser_action" ||
+				message.say === "error_retry"
 			) {
 				// These messages lead to the next result, so they should always go in nextActionMessages
 				nextActionMessages.push(message)
@@ -365,7 +360,7 @@ const BrowserSessionRow = memo((props: BrowserSessionRowProps) => {
 					<span className="codicon codicon-inspect" style={browserIconStyle}></span>
 				)}
 				<span style={approveTextStyle}>
-					<>{isAutoApproved ? "Codee is using the browser:" : "Codee wants to use the browser:"}</>
+					{isAutoApproved ? "Codee is using the browser:" : "Codee wants to use the browser:"}
 				</span>
 			</div>
 			<div
@@ -381,17 +376,15 @@ const BrowserSessionRow = memo((props: BrowserSessionRowProps) => {
 				{/* URL Bar */}
 				<div style={urlBarContainerStyle}>
 					<div
-						style={{
-							flex: 1,
-							backgroundColor: "var(--vscode-input-background)",
-							border: "1px solid var(--vscode-input-border)",
-							borderRadius: "4px",
-							padding: "3px 5px",
-							minWidth: 0,
-							color: displayState.url ? "var(--vscode-input-foreground)" : "var(--vscode-descriptionForeground)",
-							fontSize: "12px",
-						}}>
-						<div style={urlTextStyle}>{displayState.url || "http"}</div>
+						className={cn(
+							"flex bg-input-background border border-input-border rounded-sm px-1 py-0.5 min-w-0 text-description w-full justify-center",
+							{
+								"text-input-foreground": !!displayState.url,
+							},
+						)}>
+						<span className="text-xs text-ellipsis overflow-hidden whitespace-nowrap">
+							{displayState.url || "http"}
+						</span>
 					</div>
 					<BrowserSettingsMenu />
 				</div>
@@ -446,7 +439,7 @@ const BrowserSessionRow = memo((props: BrowserSessionRowProps) => {
 							cursor: "pointer",
 							padding: `9px 8px ${consoleLogsExpanded ? 0 : 8}px 8px`,
 						}}>
-						<span className={`codicon codicon-chevron-${consoleLogsExpanded ? "down" : "right"}`}></span>
+						{consoleLogsExpanded ? <ChevronDownIcon size={16} /> : <ChevronRightIcon size={16} />}
 						<span style={consoleLogsTextStyle}>Console Logs</span>
 					</div>
 					{consoleLogsExpanded && (
@@ -539,6 +532,7 @@ const BrowserSessionRowContent = memo(
 					case "api_req_started":
 					case "text":
 					case "reasoning":
+					case "error_retry":
 						return (
 							<div style={chatRowContentContainerStyle}>
 								<ChatRowContent
@@ -630,10 +624,6 @@ const BrowserCursor: React.FC<{ style?: CSSProperties }> = ({ style }) => {
 const BrowserSessionRowContainer = styled.div`
 	padding: 10px 6px 10px 15px;
 	position: relative;
-
-	&:hover ${CheckpointControls} {
-		opacity: 1;
-	}
 `
 
 export default BrowserSessionRow

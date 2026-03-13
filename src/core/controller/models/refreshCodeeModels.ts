@@ -1,9 +1,9 @@
-import { Controller } from ".."
-import axios from "axios"
 import type { AxiosRequestConfig } from "axios"
-import { EncryptUtil, getPluginVersion } from "@/utils/encrypt"
-import { CodeeModelResponse } from "@/generated/grpc-js/cline/models"
+import axios from "axios"
 import { StringRequest } from "@/generated/grpc-js/cline/common"
+import { CodeeModelResponse } from "@/generated/grpc-js/cline/models"
+import { EncryptUtil, getPluginVersion } from "@/utils/encrypt"
+import { Controller } from ".."
 
 /**
  * Fetches available models from the OpenAI API

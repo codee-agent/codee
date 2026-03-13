@@ -1,90 +1,72 @@
-import { VSCodeCheckbox, VSCodeDropdown, VSCodeLink, VSCodeOption } from "@vscode/webview-ui-toolkit/react"
+import { EmptyRequest, SetCurrentLanguageRequest } from "@shared/proto/index.cline"
+import { VSCodeDropdown, VSCodeOption } from "@vscode/webview-ui-toolkit/react"
 import { useExtensionState } from "@/context/ExtensionStateContext"
+import { useEffect, useState } from "react"
+import { useTranslation } from "react-i18next"
+import { BusinessServiceClient } from "@/services/grpc-client"
 import PreferredLanguageSetting from "../PreferredLanguageSetting"
 import Section from "../Section"
 import { updateSetting } from "../utils/settingsHandlers"
-import { useTranslation } from "react-i18next"
-import { vscode } from "@/utils/vscode"
-import { useEffect, useState } from "react"
-import { BusinessServiceClient } from "@/services/grpc-client"
-import { EmptyRequest, SetCurrentLanguageRequest } from "@shared/proto/index.cline"
 
 interface GeneralSettingsSectionProps {
 	renderSectionHeader: (tabId: string) => JSX.Element | null
 }
 
 const GeneralSettingsSection = ({ renderSectionHeader }: GeneralSettingsSectionProps) => {
-	const { telemetrySetting } = useExtensionState()
+	const { telemetrySetting, remoteConfigSettings } = useExtensionState()
 	const { t, i18n } = useTranslation()
 	const [currentLanguage, setCurrentLanguage] = useState<string>("en")
+	
 	useEffect(() => {
 		// 获取当前语言设置
-		vscode.postMessage({ type: "getLanguageConfig" })
-		BusinessServiceClient.getCurrentLanguage(EmptyRequest.create())
-		.then(response => {
-			setCurrentLanguage(response.value)
-			i18n.changeLanguage(response.value)
+		BusinessServiceClient.getCurrentLanguage(EmptyRequest.create()).then((response) => {
+			const backendLangCode = response.value === "zh-CN" ? "zh-CN" : "en"
+			const displayLangCode = response.value === "zh-CN" ? "简体中文" : "English"
+			console.log("@@@response.value:", response.value, " backendLangCode:", backendLangCode, " displayLangCode:", displayLangCode)
+			setCurrentLanguage(displayLangCode)
+			i18n.changeLanguage(backendLangCode)
 		})
+		//设置不上报信息
+		updateSetting("telemetrySetting", "disabled")
 	}, [i18n])
 
-	const handleLanguageChange = (e: any) => {
-		const newLanguage = e.target.value
+	const handleLanguageChange = (newLanguage: string) => {
+		
 		setCurrentLanguage(newLanguage)
-		i18n.changeLanguage(newLanguage)
-		BusinessServiceClient.setCurrentLanguage(SetCurrentLanguageRequest.create({
-				language: newLanguage,
-			})).catch(err => {
-			console.error("setCurrentLanguage:", err);
+		const languageCode = newLanguage === "简体中文" ? "zh-CN" : "en"
+		i18n.changeLanguage(languageCode)
+		console.log("@@@i18n.changeLanguage:",languageCode)
+		BusinessServiceClient.setCurrentLanguage(
+			SetCurrentLanguageRequest.create({
+				language: languageCode,
+			}),
+		).catch((err: Error) => {
+			console.error("setCurrentLanguage:", err)
 		})
 	}
-
 
 	return (
 		<div>
 			{renderSectionHeader("general")}
 			<Section>
-				{/* <PreferredLanguageSetting /> */}
-
-				{/* <div className="mb-[5px]">
-					<VSCodeCheckbox
-						checked={telemetrySetting !== "disabled"}
-						className="mb-[5px]"
-						onChange={(e: any) => {
-							const checked = e.target.checked === true
-							updateSetting("telemetrySetting", checked ? "enabled" : "disabled")
-						}}>
-						Allow error and usage reporting
-					</VSCodeCheckbox>
-					<p className="text-xs mt-[5px] text-[var(--vscode-descriptionForeground)]">
-						Help improve Codee by sending usage data and error reports. No code, prompts, or personal information are
-						ever sent. See our{" "}
-						<VSCodeLink className="text-inherit" href="https://docs.cline.bot/more-info/telemetry">
-							telemetry overview
-						</VSCodeLink>{" "}
-						and{" "}
-						<VSCodeLink className="text-inherit" href="https://cline.bot/privacy">
-							privacy policy
-						</VSCodeLink>{" "}
-						for more details.
-					</p>
-				</div> */}
-				{/* Language Selection */}
-				<div className="border border-solid border-[var(--vscode-panel-border)] rounded-md p-[10px] mb-5 bg-[var(--vscode-panel-background)]">
-					<details>
-						<summary className="cursor-pointer font-medium">
-							{t("settings.language.title")}
-						</summary>
-						<div className="mt-3">
-							<VSCodeDropdown
-								value={currentLanguage || "English"}
-								onChange={handleLanguageChange}
-								style={{ position: "relative", zIndex: 2000 }}>
-								<VSCodeOption value="en">English</VSCodeOption>
-								<VSCodeOption value="zh-CN">简体中文</VSCodeOption>
-							</VSCodeDropdown>
-						</div>
-					</details>
-				</div>
+				<PreferredLanguageSetting />
+			<label className="block mb-1 text-base font-medium" htmlFor="ui-language-dropdown">
+				{t("settings.language.uiLanguage")}
+			</label>
+				<VSCodeDropdown
+					id="ui-language-dropdown"
+					currentValue={currentLanguage}
+					onChange={(e: any) => {
+						const selectedValue = e.target.value
+						// 将显示值映射回语言代码
+						// const languageCode = selectedValue === "简体中文" ? "zh-CN" : "en"
+						handleLanguageChange(selectedValue)
+					}}
+					style={{ width: "100%" }}>
+					<VSCodeOption value="English">English</VSCodeOption>
+					<VSCodeOption value="简体中文">简体中文</VSCodeOption>
+				</VSCodeDropdown>
+				<p className="text-sm text-description mt-1">{t("settings.language.uiLanguageDesc")}</p>
 			</Section>
 		</div>
 	)

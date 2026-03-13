@@ -1,6 +1,5 @@
 import { getSavedApiConversationHistory, getSavedClineMessages } from "@core/storage/disk"
 import { WebviewProvider } from "@core/webview"
-import { Logger } from "@services/logging/Logger"
 import { AutoApprovalSettings, DEFAULT_AUTO_APPROVAL_SETTINGS } from "@shared/AutoApprovalSettings"
 import { ApiProvider } from "@shared/api"
 import { HistoryItem } from "@shared/HistoryItem"
@@ -9,6 +8,8 @@ import * as http from "http"
 import * as path from "path"
 import * as vscode from "vscode"
 import { Controller } from "@/core/controller"
+import { ExtensionRegistryInfo } from "@/registry"
+import { Logger } from "@/shared/services/Logger"
 import { getCwd } from "@/utils/path"
 import { calculateToolSuccessRate, getFileChanges, initializeGitRepository, validateWorkspacePath } from "./GitHelper"
 
@@ -46,14 +47,13 @@ let messageCatcherDisposable: vscode.Disposable | undefined
  * @param context The VSCode extension context
  * @param controller The webview provider instance
  */
-async function updateAutoApprovalSettings(_context: vscode.ExtensionContext, controller?: Controller) {
+async function updateAutoApprovalSettings(controller?: Controller) {
 	try {
-		const autoApprovalSettings = controller?.cacheService.getGlobalStateKey("autoApprovalSettings")
+		const autoApprovalSettings = controller?.stateManager.getGlobalSettingsKey("autoApprovalSettings")
 
 		// Enable all actions
 		const updatedSettings: AutoApprovalSettings = {
 			...(autoApprovalSettings || DEFAULT_AUTO_APPROVAL_SETTINGS),
-			enabled: true,
 			actions: {
 				readFiles: true,
 				readFilesExternally: true,
@@ -64,10 +64,9 @@ async function updateAutoApprovalSettings(_context: vscode.ExtensionContext, con
 				useBrowser: false, // Keep browser disabled for tests
 				useMcp: false, // Keep MCP disabled for tests
 			},
-			maxRequests: 10000, // Increase max requests for tests
 		}
 
-		controller?.cacheService.setGlobalState("autoApprovalSettings", updatedSettings)
+		controller?.stateManager.setGlobalState("autoApprovalSettings", updatedSettings)
 		Logger.log("Auto approval settings updated for test mode")
 
 		// Update the webview with the new state
@@ -84,16 +83,16 @@ async function updateAutoApprovalSettings(_context: vscode.ExtensionContext, con
  * @param webviewProvider The webview provider instance to use for message catching
  * @returns The created HTTP server instance
  */
-export function createTestServer(controller: Controller): http.Server {
+export async function createTestServer(controller: Controller): Promise<http.Server> {
 	// Try to show the Cline sidebar
 	Logger.log("[createTestServer] Opening Cline in sidebar...")
-	vscode.commands.executeCommand("workbench.view.codee-ActivityBar")
+	vscode.commands.executeCommand(`workbench.view.${ExtensionRegistryInfo.name}-ActivityBar`)
 
 	// Then ensure the webview is focused/loaded
-	vscode.commands.executeCommand("codee-me.SidebarProvider.focus")
+	vscode.commands.executeCommand(`${ExtensionRegistryInfo.views.Sidebar}.focus`)
 
 	// Update auto approval settings is available
-	updateAutoApprovalSettings(controller.context, controller)
+	await updateAutoApprovalSettings(controller)
 
 	const PORT = 9876
 
@@ -202,32 +201,31 @@ export function createTestServer(controller: Controller): http.Server {
 					// Clear any existing task
 					await visibleWebview.controller.clearTask()
 
-					// TODO: convert apiKey to codeeId
 					// If API key is provided, update the API configuration
 					if (apiKey) {
 						Logger.log("API key provided, updating API configuration")
 
 						// Get current API configuration
-						const apiConfiguration = visibleWebview.controller.cacheService.getApiConfiguration()
+						const apiConfiguration = visibleWebview.controller.stateManager.getApiConfiguration()
 
 						// Update API configuration with API key
 						const updatedConfig = {
 							...apiConfiguration,
 							apiProvider: "cline" as ApiProvider,
-							codeeId: apiKey,
+							clineAccountId: apiKey,
 						}
 
 						// Store the API key securely
-						visibleWebview.controller.cacheService.setSecret("codeeId", apiKey)
+						visibleWebview.controller.stateManager.setSecret("clineAccountId", apiKey)
 
-						visibleWebview.controller.cacheService.setApiConfiguration(updatedConfig)
+						visibleWebview.controller.stateManager.setApiConfiguration(updatedConfig)
 
 						// Update cache service to use cline provider
-						const currentConfig = visibleWebview.controller.cacheService.getApiConfiguration()
-						visibleWebview.controller.cacheService.setApiConfiguration({
+						const currentConfig = visibleWebview.controller.stateManager.getApiConfiguration()
+						visibleWebview.controller.stateManager.setApiConfiguration({
 							...currentConfig,
-							planModeApiProvider: "codee",
-							actModeApiProvider: "codee",
+							planModeApiProvider: "cline",
+							actModeApiProvider: "cline",
 						})
 
 						// Post state to webview to reflect changes
@@ -304,7 +302,7 @@ export function createTestServer(controller: Controller): http.Server {
 						let apiConversationHistory: any[] = []
 						try {
 							if (typeof taskId === "string") {
-								messages = await getSavedClineMessages(visibleWebview.controller.context, taskId)
+								messages = await getSavedClineMessages(taskId)
 							}
 						} catch (error) {
 							Logger.log(`Error getting saved Cline messages: ${error}`)
@@ -312,10 +310,7 @@ export function createTestServer(controller: Controller): http.Server {
 
 						try {
 							if (typeof taskId === "string") {
-								apiConversationHistory = await getSavedApiConversationHistory(
-									visibleWebview.controller.context,
-									taskId,
-								)
+								apiConversationHistory = await getSavedApiConversationHistory(taskId)
 							}
 						} catch (error) {
 							Logger.log(`Error getting saved API conversation history: ${error}`)

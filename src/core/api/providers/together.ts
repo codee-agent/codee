@@ -1,11 +1,14 @@
-import { Anthropic } from "@anthropic-ai/sdk"
 import { ModelInfo, openAiModelInfoSaneDefaults } from "@shared/api"
 import OpenAI from "openai"
+import type { ChatCompletionTool as OpenAITool } from "openai/resources/chat/completions"
+import { ClineStorageMessage } from "@/shared/messages/content"
+import { createOpenAIClient } from "@/shared/net"
 import { ApiHandler, CommonApiHandlerOptions } from "../index"
 import { withRetry } from "../retry"
 import { convertToOpenAiMessages } from "../transform/openai-format"
 import { convertToR1Format } from "../transform/r1-format"
 import { ApiStream } from "../transform/stream"
+import { getOpenAIToolParams, ToolCallProcessor } from "../transform/tool-call-processor"
 
 interface TogetherHandlerOptions extends CommonApiHandlerOptions {
 	togetherApiKey?: string
@@ -26,7 +29,7 @@ export class TogetherHandler implements ApiHandler {
 				throw new Error("Together API key is required")
 			}
 			try {
-				this.client = new OpenAI({
+				this.client = createOpenAIClient({
 					baseURL: "https://api.together.xyz/v1",
 					apiKey: this.options.togetherApiKey,
 				})
@@ -38,7 +41,7 @@ export class TogetherHandler implements ApiHandler {
 	}
 
 	@withRetry()
-	async *createMessage(systemPrompt: string, messages: Anthropic.Messages.MessageParam[]): ApiStream {
+	async *createMessage(systemPrompt: string, messages: ClineStorageMessage[], tools?: OpenAITool[]): ApiStream {
 		const client = this.ensureClient()
 		const modelId = this.options.togetherModelId ?? ""
 		const isDeepseekReasoner = modelId.includes("deepseek-reasoner")
@@ -58,14 +61,20 @@ export class TogetherHandler implements ApiHandler {
 			temperature: 0,
 			stream: true,
 			stream_options: { include_usage: true },
+			...getOpenAIToolParams(tools),
 		})
+		const toolCallProcessor = new ToolCallProcessor()
 		for await (const chunk of stream) {
-			const delta = chunk.choices[0]?.delta
+			const delta = chunk.choices?.[0]?.delta
 			if (delta?.content) {
 				yield {
 					type: "text",
 					text: delta.content,
 				}
+			}
+
+			if (delta?.tool_calls) {
+				yield* toolCallProcessor.processToolCallDeltas(delta.tool_calls)
 			}
 
 			if (delta && "reasoning_content" in delta && delta.reasoning_content) {

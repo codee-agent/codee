@@ -1,11 +1,13 @@
 import {
-	McpServerStatus,
+	McpPrompt as ProtoMcpPrompt,
+	McpPromptArgument as ProtoMcpPromptArgument,
 	McpResource as ProtoMcpResource,
 	McpResourceTemplate as ProtoMcpResourceTemplate,
 	McpServer as ProtoMcpServer,
+	McpServerStatus,
 	McpTool as ProtoMcpTool,
 } from "@shared/proto/cline/mcp"
-import { McpResource, McpResourceTemplate, McpServer, McpTool } from "../../mcp"
+import { McpOAuthAuthStatus, McpPrompt, McpPromptArgument, McpResource, McpResourceTemplate, McpServer, McpTool } from "../../mcp"
 
 // Helper to convert TS status to Proto enum
 function convertMcpStatusToProto(status: McpServer["status"]): McpServerStatus {
@@ -30,9 +32,12 @@ export function convertMcpServersToProtoMcpServers(mcpServers: McpServer[]): Pro
 		tools: (server.tools || []).map(convertTool),
 		resources: (server.resources || []).map(convertResource),
 		resourceTemplates: (server.resourceTemplates || []).map(convertResourceTemplate),
+		prompts: (server.prompts || []).map(convertPrompt),
 
 		disabled: server.disabled,
 		timeout: server.timeout,
+		oauthRequired: server.oauthRequired,
+		oauthAuthStatus: server.oauthAuthStatus,
 	}))
 	return protoServers
 }
@@ -79,6 +84,29 @@ function convertResourceTemplate(template: McpResourceTemplate): ProtoMcpResourc
 	}
 }
 
+/**
+ * Converts McpPromptArgument to ProtoMcpPromptArgument format
+ */
+function convertPromptArgument(arg: McpPromptArgument): ProtoMcpPromptArgument {
+	return {
+		name: arg.name,
+		description: arg.description,
+		required: arg.required,
+	}
+}
+
+/**
+ * Converts McpPrompt to ProtoMcpPrompt format
+ */
+function convertPrompt(prompt: McpPrompt): ProtoMcpPrompt {
+	return {
+		name: prompt.name,
+		title: prompt.title,
+		description: prompt.description,
+		arguments: (prompt.arguments || []).map(convertPromptArgument),
+	}
+}
+
 // Helper to convert Proto enum to TS status
 function convertProtoStatusToMcp(status: McpServerStatus): McpServer["status"] {
 	switch (status) {
@@ -104,9 +132,12 @@ export function convertProtoMcpServersToMcpServers(protoServers: ProtoMcpServer[
 			tools: protoServer.tools.map(convertProtoTool),
 			resources: protoServer.resources.map(convertProtoResource),
 			resourceTemplates: protoServer.resourceTemplates.map(convertProtoResourceTemplate),
+			prompts: protoServer.prompts.map(convertProtoPrompt),
 
 			disabled: protoServer.disabled,
 			timeout: protoServer.timeout,
+			oauthRequired: protoServer.oauthRequired,
+			oauthAuthStatus: protoServer.oauthAuthStatus === "" ? undefined : (protoServer.oauthAuthStatus as McpOAuthAuthStatus),
 		}
 	})
 	return mcpServers
@@ -149,5 +180,28 @@ function convertProtoResourceTemplate(protoTemplate: ProtoMcpResourceTemplate): 
 		name: protoTemplate.name,
 		mimeType: protoTemplate.mimeType === "" ? undefined : protoTemplate.mimeType,
 		description: protoTemplate.description === "" ? undefined : protoTemplate.description,
+	}
+}
+
+/**
+ * Converts ProtoMcpPromptArgument to McpPromptArgument format
+ */
+function convertProtoPromptArgument(protoArg: ProtoMcpPromptArgument): McpPromptArgument {
+	return {
+		name: protoArg.name,
+		description: protoArg.description === "" ? undefined : protoArg.description,
+		required: protoArg.required,
+	}
+}
+
+/**
+ * Converts ProtoMcpPrompt to McpPrompt format
+ */
+function convertProtoPrompt(protoPrompt: ProtoMcpPrompt): McpPrompt {
+	return {
+		name: protoPrompt.name,
+		title: protoPrompt.title === "" ? undefined : protoPrompt.title,
+		description: protoPrompt.description === "" ? undefined : protoPrompt.description,
+		arguments: protoPrompt.arguments.map(convertProtoPromptArgument),
 	}
 }

@@ -15,11 +15,11 @@
 </table>
 </div>
 
-**Hello!** Codee (/koʊˈdaɪ/) is an AI-powered programming tool. The name is derived from the words "Coding" and "AI." And the pronunciation /koʊˈdaɪ/ translates to “pocket” in Chinese, It can hold anything and everything, and it can also provide all kinds of assistance!
+<a href="https://github.com/codee-agent/codee" target="_blank" style="text-decoration: underline;"><strong>Codee(koʊˈdiː)</strong></a>  is an AI-powered programming tool. The name is derived from the words "Code" and "engineer".It is your professional code engineer!
 
 ## Key Features of Codee
 
-1. **Including** code writing and editing, command-line operations, MCP usage, AI model configuration, Enhancement of prompts, and more.  
+1. **Including**  code writing/editing, command line operations, MCP usage, AI model configuration, vector data search, Pencil tool operation, Skill application, and YOLO mode execution and more.
 2. **Added internationalization support for the interface, including multiple languages**: English, 简体中文, 日本語, Русский, Français, العربية, 한국어, 繁體中文, Deutsch, Italiano, Bahasa Melayu, Español.  
 3. **Added automatic code completion functionality**. You need to configure the model yourself, preferably one optimized for coding, to achieve outstanding results!  
 4. **Optimized system prompts to reduce token consumption and minimize context length usage in large models**

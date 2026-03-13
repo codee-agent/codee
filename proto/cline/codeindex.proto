@@ -1,0 +1,67 @@
+syntax = "proto3";
+
+package cline;
+import "cline/common.proto";
+option java_package = "bot.cline.proto";
+option java_multiple_files = true;
+
+// Service for business-related operations
+service CodeindexService {    
+  // Get status
+  rpc getIndexingStatus(EmptyRequest) returns (stream indexingStatusResponse);
+
+  rpc setCodeIndexSettings(setCodeIndexSettingsRequest) returns (stream Boolean);
+
+  rpc clearIndexData(EmptyRequest) returns(Empty);
+
+  rpc startIndexing(EmptyRequest) returns(Empty);
+
+  rpc getCodeIndexSettings(EmptyRequest) returns (getCodeIndexSettingsResponse);
+}
+
+// Response for get state
+message indexingStatusResponse {
+  string systemStatus = 1;
+  string message = 2;
+  int64 processedItems = 3;
+  int64 totalItems = 4;
+  string currentItemUnit = 5;
+  optional string workerspacePath = 6;
+}
+
+// Request for set settings
+message setCodeIndexSettingsRequest {
+  bool codebaseIndexEnabled = 1;
+  optional string codebaseIndexQdrantUrl = 2;
+  optional string codebaseIndexEmbedderProvider = 3;
+  optional string codebaseIndexEmbedderBaseUrl = 4;
+  optional string codebaseIndexEmbedderModelId = 5;
+  optional int64 codebaseIndexEmbedderModelDimension = 6; 
+  optional string codebaseIndexOpenAiCompatibleBaseUrl = 7;
+  optional int64 codebaseIndexSearchMaxResults = 8;
+  optional int64 codebaseIndexSearchMinScore = 9;
+  optional string codeIndexOpenAiKey = 10;
+  optional string codeIndexQdrantApiKey = 11;
+  optional string codebaseIndexOpenAiCompatibleApiKey = 12;
+  optional string codebaseIndexGeminiApiKey = 13;
+  optional string codebaseIndexMistralApiKey = 14;
+  optional string codebaseIndexVercelAiGatewayApiKey = 15;
+}
+
+message getCodeIndexSettingsResponse {
+  bool codebaseIndexEnabled = 1;
+  optional string codebaseIndexQdrantUrl = 2;
+  optional string codebaseIndexEmbedderProvider = 3;
+  optional string codebaseIndexEmbedderBaseUrl = 4;
+  optional string codebaseIndexEmbedderModelId = 5;
+  optional int64 codebaseIndexEmbedderModelDimension = 6;
+  optional string codebaseIndexOpenAiCompatibleBaseUrl = 7;
+  optional int64 codebaseIndexSearchMaxResults = 8;
+  optional int64 codebaseIndexSearchMinScore = 9;
+  optional string codeIndexOpenAiKey = 10;
+  optional string codeIndexQdrantApiKey = 11;
+  optional string codebaseIndexOpenAiCompatibleApiKey = 12;
+  optional string codebaseIndexGeminiApiKey = 13;
+  optional string codebaseIndexMistralApiKey = 14;
+  optional string codebaseIndexVercelAiGatewayApiKey = 15;
+}

@@ -1,12 +1,9 @@
+import { useTranslation } from "react-i18next"
 import React from "react"
-import Announcement from "@/components/chat/Announcement"
-import TelemetryBanner from "@/components/common/TelemetryBanner"
+import CodeeLogoVariable from "@/assets/CodeeLogoVariable"
 import HistoryPreview from "@/components/history/HistoryPreview"
-import HomeHeader from "@/components/welcome/HomeHeader"
 import { SuggestedTasks } from "@/components/welcome/SuggestedTasks"
 import { WelcomeSectionProps } from "../../types/chatTypes"
-import CodeeLogoVariable from "@/assets/CodeeLogoVariable"
-import { t } from "i18next"
 
 /**
  * Welcome section shown when there's no active task
@@ -21,6 +18,7 @@ export const WelcomeSection: React.FC<WelcomeSectionProps> = ({
 	taskHistory,
 	shouldShowQuickWins,
 }) => {
+	const { t } = useTranslation()
 	return (
 		<div className="flex flex-col flex-1 w-full h-full p-0 m-0">
 			<div className="overflow-y-auto flex flex-col pb-2.5">
@@ -29,7 +27,7 @@ export const WelcomeSection: React.FC<WelcomeSectionProps> = ({
 				<HomeHeader /> */}
 				<div style={{ padding: "0 20px", flexShrink: 0, textAlign: "center" }}>
 					<h2>{t("chat.welcome.title")}</h2>
-					<div className="my-5">
+					<div className="my-5 flex justify-center">
 						<CodeeLogoVariable className="size-16" />
 					</div>
 				</div>

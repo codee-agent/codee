@@ -1,12 +1,11 @@
 import { BooleanRequest, EmptyRequest } from "@shared/proto/cline/common"
 import { VSCodeButton, VSCodeLink } from "@vscode/webview-ui-toolkit/react"
 import { memo, useEffect, useState } from "react"
-import ClineLogoWhite from "@/assets/ClineLogoWhite"
+import { Trans, useTranslation } from "react-i18next"
 import ApiOptions from "@/components/settings/ApiOptions"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { AccountServiceClient, StateServiceClient } from "@/services/grpc-client"
 import { validateApiConfiguration } from "@/utils/validate"
-import { useTranslation, Trans } from "react-i18next"
 
 const WelcomeView = memo(() => {
 	const { apiConfiguration, mode } = useExtensionState()
@@ -41,31 +40,31 @@ const WelcomeView = memo(() => {
 				<div className="flex justify-center my-5">{/* <ClineLogoWhite className="size-16" /> */}</div>
 				<p>
 					<Trans
-						i18nKey="chat.welcome.description"
 						components={{
 							claudeLink: (
-								<VSCodeLink href="https://www.anthropic.com/claude/sonnet" className="inline">
+								<VSCodeLink className="inline" href="https://www.anthropic.com/claude/sonnet">
 									{t("chat.welcome.claudeLinkText")}
 								</VSCodeLink>
 							),
 						}}
+						i18nKey="chat.welcome.description"
 						values={{
 							claudeLink: t("chat.welcome.claudeLinkText"),
 						}}
 					/>
 				</p>
 
-				{/* <p className="text-[var(--vscode-descriptionForeground)]">{t("chat.welcome.signupText")}</p>
+				{/* <p className="text-[var(--vscode-descriptionForeground)]">{t("chat.welcome.signupText")}</p> */}
 
-				<VSCodeButton appearance="primary" onClick={handleLogin} className="w-full mt-1">
+				{/* <VSCodeButton appearance="primary" onClick={handleLogin} className="w-full mt-1">
 					{t('chat.welcome.getStarted')}
 				</VSCodeButton> */}
 
 				{!showApiOptions && (
 					<VSCodeButton
 						appearance="secondary"
-						onClick={() => setShowApiOptions(!showApiOptions)}
-						className="mt-2.5 w-full">
+						className="mt-2.5 w-full"
+						onClick={() => setShowApiOptions(!showApiOptions)}>
 						{t("chat.welcome.useOwnApiKey")}
 					</VSCodeButton>
 				)}

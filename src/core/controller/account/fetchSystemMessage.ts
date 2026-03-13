@@ -1,9 +1,9 @@
-import type { Controller } from "../index"
-import type { EmptyRequest } from "@shared/proto/cline/common"
 import { SystemMessageResponse } from "@shared/proto/cline/account"
-import { VALUE_CODEE_BASE_URL } from "webview-ui/src/values"
+import type { EmptyRequest } from "@shared/proto/cline/common"
 import axios, { AxiosRequestConfig, AxiosResponse } from "axios"
+import { VALUE_CODEE_BASE_URL } from "@/utils/values"
 import { getPluginVersion } from "@/utils/encrypt"
+import type { Controller } from "../index"
 
 interface ApiResponse {
 	data: Array<{

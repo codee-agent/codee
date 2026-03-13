@@ -1,12 +1,9 @@
 import { basetenDefaultModelId, basetenModels } from "@shared/api"
-import { EmptyRequest } from "@shared/proto/cline/common"
 import { Mode } from "@shared/storage/types"
 import { VSCodeLink, VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 import Fuse from "fuse.js"
 import React, { KeyboardEvent, useEffect, useMemo, useRef, useState } from "react"
-import { useMount } from "react-use"
 import { useExtensionState } from "../../context/ExtensionStateContext"
-import { ModelsServiceClient } from "../../services/grpc-client"
 import { highlight } from "../history/HistoryView"
 import { ModelInfoView } from "./common/ModelInfoView"
 import { getModeSpecificFields, normalizeApiConfiguration } from "./utils/providerUtils"
@@ -18,7 +15,7 @@ export interface BasetenModelPickerProps {
 }
 
 const BasetenModelPicker: React.FC<BasetenModelPickerProps> = ({ isPopup, currentMode }) => {
-	const { apiConfiguration, basetenModels: dynamicBasetenModels, setBasetenModels } = useExtensionState()
+	const { apiConfiguration, basetenModels: dynamicBasetenModels } = useExtensionState()
 	const { handleModeFieldsChange } = useApiConfigurationHandlers()
 	const modeFields = getModeSpecificFields(apiConfiguration, currentMode)
 	const [searchTerm, setSearchTerm] = useState(modeFields.basetenModelId || basetenDefaultModelId)
@@ -30,12 +27,6 @@ const BasetenModelPicker: React.FC<BasetenModelPickerProps> = ({ isPopup, curren
 	const dropdownListRef = useRef<HTMLDivElement>(null)
 
 	const handleModelChange = (newModelId: string) => {
-		// Only allow selection of models that are in the static basetenModels
-		if (!(newModelId in basetenModels)) {
-			console.warn(`Model ${newModelId} is not in the static basetenModels list`)
-			return
-		}
-
 		// Use dynamic models if available, otherwise fall back to static models
 		const modelInfo = dynamicBasetenModels?.[newModelId] || basetenModels[newModelId as keyof typeof basetenModels]
 
@@ -57,34 +48,9 @@ const BasetenModelPicker: React.FC<BasetenModelPickerProps> = ({ isPopup, curren
 		return normalizeApiConfiguration(apiConfiguration, currentMode)
 	}, [apiConfiguration, currentMode])
 
-	useMount(() => {
-		ModelsServiceClient.refreshBasetenModels(EmptyRequest.create({}))
-			.then((response) => {
-				// Filter to only include models that are listed in the static basetenModels
-				const filteredModels: Record<string, any> = {}
-
-				// Always include the default model
-				filteredModels[basetenDefaultModelId] = basetenModels[basetenDefaultModelId]
-
-				// Only include models from the API response that exist in static basetenModels
-				for (const [modelId, modelInfo] of Object.entries(response.models)) {
-					if (modelId in basetenModels) {
-						filteredModels[modelId] = modelInfo
-					}
-				}
-
-				setBasetenModels(filteredModels)
-			})
-			.catch((err) => {
-				console.error("Failed to refresh Baseten models:", err)
-				// On error, fall back to only static models
-				setBasetenModels({
-					[basetenDefaultModelId]: basetenModels[basetenDefaultModelId],
-				})
-			})
-	})
-
 	// Sync external changes when the modelId changes
+	// NOTE: Model list is refreshed automatically on mount or when the API key is set,
+	// no need to refresh here in this component again on mount.
 	useEffect(() => {
 		const currentModelId = modeFields.basetenModelId || basetenDefaultModelId
 		setSearchTerm(currentModelId)
@@ -113,24 +79,8 @@ const BasetenModelPicker: React.FC<BasetenModelPickerProps> = ({ isPopup, curren
 	}, [])
 
 	const allBasetenModels = useMemo(() => {
-		// Only include models that are listed in the static basetenModels
-		const filteredModels: Record<string, any> = {}
-
-		// Start with static models
-		for (const [modelId, modelInfo] of Object.entries(basetenModels)) {
-			filteredModels[modelId] = modelInfo
-		}
-
-		// Override with dynamic models, but only if they exist in static basetenModels
-		if (dynamicBasetenModels) {
-			for (const [modelId, modelInfo] of Object.entries(dynamicBasetenModels)) {
-				if (modelId in basetenModels) {
-					filteredModels[modelId] = modelInfo
-				}
-			}
-		}
-
-		return filteredModels
+		// Merge static models with dynamic models, with dynamic taking precedence
+		return { ...basetenModels, ...(dynamicBasetenModels || {}) }
 	}, [dynamicBasetenModels])
 
 	const modelIds = useMemo(() => {
@@ -162,6 +112,28 @@ const BasetenModelPicker: React.FC<BasetenModelPickerProps> = ({ isPopup, curren
 			: searchableItems
 		return results
 	}, [searchableItems, debouncedSearchTerm, fuse])
+
+	// Safe HTML parser for highlighted search results
+	const parseHighlightedText = React.useCallback((htmlString: string) => {
+		// Split by highlight spans and reconstruct as React elements
+		const parts = htmlString.split(/(<span class="model-item-highlight">.*?<\/span>)/g)
+
+		return parts
+			.map((part) => {
+				if (part.startsWith('<span class="model-item-highlight">')) {
+					// Extract text content from span
+					const text = part.replace(/<span class="model-item-highlight">(.*?)<\/span>/, "$1")
+					return (
+						<span className="model-item-highlight" key={`highlight-${text}`}>
+							{text}
+						</span>
+					)
+				}
+				// Return plain text without wrapping in span
+				return part || null
+			})
+			.filter((part) => part !== null && part !== "")
+	}, [])
 
 	const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
 		if (!isDropdownVisible) {
@@ -255,7 +227,7 @@ const BasetenModelPicker: React.FC<BasetenModelPickerProps> = ({ isPopup, curren
 					</VSCodeTextField>
 					{isDropdownVisible && (
 						<div
-							className="absolute top-[calc(100%-3px)] left-0 w-[calc(100%-2px)] max-h-[200px] overflow-y-auto border border-[var(--vscode-list-activeSelectionBackground)] rounded-b-[3px]"
+							className="absolute top-[calc(100%-3px)] left-0 w-[calc(100%-2px)] max-h-[200px] overflow-y-auto border border-(--vscode-list-activeSelectionBackground) rounded-b-[3px]"
 							ref={dropdownListRef}
 							style={{
 								backgroundColor: "var(--vscode-dropdown-background)",
@@ -263,20 +235,20 @@ const BasetenModelPicker: React.FC<BasetenModelPickerProps> = ({ isPopup, curren
 							}}>
 							{modelSearchResults.map((item, index) => (
 								<div
-									className={`px-2.5 py-1.5 cursor-pointer break-all whitespace-normal hover:bg-[var(--vscode-list-activeSelectionBackground)] ${
-										index === selectedIndex ? "bg-[var(--vscode-list-activeSelectionBackground)]" : ""
+									className={`px-2.5 py-1.5 cursor-pointer break-all whitespace-normal hover:bg-(--vscode-list-activeSelectionBackground) ${
+										index === selectedIndex ? "bg-(--vscode-list-activeSelectionBackground)" : ""
 									}`}
-									dangerouslySetInnerHTML={{
-										__html: item.html,
-									}}
 									key={item.id}
 									onClick={() => {
 										handleModelChange(item.id)
 										setIsDropdownVisible(false)
 									}}
 									onMouseEnter={() => setSelectedIndex(index)}
-									ref={(el: HTMLDivElement | null) => (itemRefs.current[index] = el)}
-								/>
+									ref={(el: HTMLDivElement | null) => {
+										itemRefs.current[index] = el
+									}}>
+									{parseHighlightedText(item.html)}
+								</div>
 							))}
 						</div>
 					)}
@@ -286,12 +258,12 @@ const BasetenModelPicker: React.FC<BasetenModelPickerProps> = ({ isPopup, curren
 			{hasInfo ? (
 				<ModelInfoView isPopup={isPopup} modelInfo={selectedModelInfo} selectedModelId={selectedModelId} />
 			) : (
-				<p className="text-xs mt-0 text-[var(--vscode-descriptionForeground)]">
+				<p className="text-xs mt-0 text-(--vscode-descriptionForeground)">
 					The extension automatically fetches the latest list of models available on{" "}
 					<VSCodeLink className="inline text-inherit" href="https://www.baseten.co/products/model-apis/">
 						Baseten.
 					</VSCodeLink>
-					If you're unsure which model to choose, Codee works best with{" "}
+					If you're unsure which model to choose, Cline works best with{" "}
 					<VSCodeLink className="inline text-inherit" onClick={() => handleModelChange("moonshotai/Kimi-K2-Instruct")}>
 						moonshotai/Kimi-K2-Instruct.
 					</VSCodeLink>

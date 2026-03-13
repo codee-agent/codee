@@ -1,10 +1,10 @@
-import { getTaskMetadata, saveTaskMetadata } from "@core/storage/disk"
+import { getTaskMetadata, readTaskHistoryFromState, saveTaskMetadata } from "@core/storage/disk"
 import type { ClineMessage } from "@shared/ExtensionMessage"
 import chokidar, { FSWatcher } from "chokidar"
 import * as path from "path"
 import * as vscode from "vscode"
 import { Controller } from "@/core/controller"
-import { HistoryItem } from "@/shared/HistoryItem"
+import { Logger } from "@/shared/services/Logger"
 import { getCwd } from "@/utils/path"
 import type { FileMetadataEntry } from "./ContextTrackerTypes"
 
@@ -47,7 +47,7 @@ export class FileContextTracker {
 
 		const cwd = await getCwd()
 		if (!cwd) {
-			console.info("No workspace folder available - cannot determine current working directory")
+			Logger.info("No workspace folder available - cannot determine current working directory")
 			return
 		}
 
@@ -86,17 +86,17 @@ export class FileContextTracker {
 		try {
 			const cwd = await getCwd()
 			if (!cwd) {
-				console.info("No workspace folder available - cannot determine current working directory")
+				Logger.info("No workspace folder available - cannot determine current working directory")
 				return
 			}
 
 			// Add file to metadata
-			await this.addFileToFileContextTracker(this.controller.context, this.taskId, filePath, operation)
+			await this.addFileToFileContextTracker(this.taskId, filePath, operation)
 
 			// Set up file watcher for this file
 			await this.setupFileWatcher(filePath)
 		} catch (error) {
-			console.error("Failed to track file operation:", error)
+			Logger.error("Failed to track file operation:", error)
 		}
 	}
 
@@ -105,14 +105,9 @@ export class FileContextTracker {
 	 * This handles the business logic of determining if the file is new, stale, or active.
 	 * It also updates the metadata with the latest read/edit dates.
 	 */
-	async addFileToFileContextTracker(
-		context: vscode.ExtensionContext,
-		taskId: string,
-		filePath: string,
-		source: FileMetadataEntry["record_source"],
-	) {
+	async addFileToFileContextTracker(taskId: string, filePath: string, source: FileMetadataEntry["record_source"]) {
 		try {
-			const metadata = await getTaskMetadata(context, taskId)
+			const metadata = await getTaskMetadata(taskId)
 			const now = Date.now()
 
 			// Mark existing entries for this file as stale
@@ -161,9 +156,9 @@ export class FileContextTracker {
 			}
 
 			metadata.files_in_context.push(newEntry)
-			await saveTaskMetadata(context, taskId, metadata)
+			await saveTaskMetadata(taskId, metadata)
 		} catch (error) {
-			console.error("Failed to add file to metadata:", error)
+			Logger.error("Failed to add file to metadata:", error)
 		}
 	}
 
@@ -201,7 +196,7 @@ export class FileContextTracker {
 
 		try {
 			// Check task metadata for files that were edited by Cline or users after the message timestamp
-			const taskMetadata = await getTaskMetadata(this.controller.context, this.taskId)
+			const taskMetadata = await getTaskMetadata(this.taskId)
 
 			if (taskMetadata?.files_in_context) {
 				for (const fileEntry of taskMetadata.files_in_context) {
@@ -214,7 +209,7 @@ export class FileContextTracker {
 				}
 			}
 		} catch (error) {
-			console.error("Error checking file context metadata:", error)
+			Logger.error("Error checking file context metadata:", error)
 		}
 
 		// Also check deleted task messages for file operations
@@ -228,7 +223,7 @@ export class FileContextTracker {
 						}
 					}
 				} catch (error) {
-					console.error("Error checking task messages:", error)
+					Logger.error("Error checking task messages:", error)
 				}
 			}
 		}
@@ -243,9 +238,9 @@ export class FileContextTracker {
 			const key = `pendingFileContextWarning_${this.taskId}`
 			// NOTE: Using 'as any' because dynamic keys like pendingFileContextWarning_${taskId}
 			// are legitimate workspace state keys but don't fit the strict LocalStateKey type system
-			this.controller.cacheService.setWorkspaceState(key as any, files)
+			this.controller.stateManager.setWorkspaceState(key as any, files)
 		} catch (error) {
-			console.error("Error storing pending file context warning:", error)
+			Logger.error("Error storing pending file context warning:", error)
 		}
 	}
 
@@ -255,10 +250,10 @@ export class FileContextTracker {
 	async retrievePendingFileContextWarning(): Promise<string[] | undefined> {
 		try {
 			const key = `pendingFileContextWarning_${this.taskId}`
-			const files = this.controller.cacheService.getWorkspaceStateKey(key as any) as string[]
+			const files = this.controller.stateManager.getWorkspaceStateKey(key as any) as string[]
 			return files
 		} catch (error) {
-			console.error("Error retrieving pending file context warning:", error)
+			Logger.error("Error retrieving pending file context warning:", error)
 		}
 		return undefined
 	}
@@ -270,11 +265,11 @@ export class FileContextTracker {
 		try {
 			const files = await this.retrievePendingFileContextWarning()
 			if (files) {
-				this.controller.cacheService.setWorkspaceState(`pendingFileContextWarning_${this.taskId}` as any, undefined)
+				this.controller.stateManager.setWorkspaceState(`pendingFileContextWarning_${this.taskId}` as any, undefined)
 				return files
 			}
 		} catch (error) {
-			console.error("Error retrieving pending file context warning:", error)
+			Logger.error("Error retrieving pending file context warning:", error)
 		}
 		return undefined
 	}
@@ -286,8 +281,7 @@ export class FileContextTracker {
 	static async cleanupOrphanedWarnings(context: vscode.ExtensionContext): Promise<void> {
 		const startTime = Date.now()
 		try {
-			// eslint-disable-next-line eslint-rules/no-direct-vscode-state-api
-			const taskHistory = (context.globalState.get("taskHistory") as HistoryItem[]) || []
+			const taskHistory = await readTaskHistoryFromState()
 			const existingTaskIds = new Set(taskHistory.map((task) => task.id))
 			const allStateKeys = context.workspaceState.keys()
 			const pendingWarningKeys = allStateKeys.filter((key) => key.startsWith("pendingFileContextWarning_"))
@@ -308,11 +302,11 @@ export class FileContextTracker {
 			}
 
 			const duration = Date.now() - startTime
-			console.log(
+			Logger.log(
 				`FileContextTracker: Processed ${existingTaskIds.size} tasks, found ${pendingWarningKeys.length} pending warnings, ${orphanedPendingContextTasks.length} orphaned, deleted ${orphanedPendingContextTasks.length}, took ${duration}ms`,
 			)
 		} catch (error) {
-			console.error("Error cleaning up orphaned file context warnings:", error)
+			Logger.error("[FileContextTracker] Error cleaning up orphaned file context warnings:", error)
 		}
 	}
 }

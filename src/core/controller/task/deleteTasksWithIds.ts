@@ -3,6 +3,7 @@ import fs from "fs/promises"
 import path from "path"
 import { HostProvider } from "@/hosts/host-provider"
 import { ShowMessageType } from "@/shared/proto/host/window"
+import { Logger } from "@/shared/services/Logger"
 import { fileExistsAtPath } from "../../../utils/fs"
 import { Controller } from ".."
 
@@ -47,13 +48,11 @@ export async function deleteTasksWithIds(controller: Controller, request: String
  * @param id The task ID to delete
  */
 async function deleteTaskWithId(controller: Controller, id: string): Promise<void> {
-	console.info("deleteTaskWithId: ", id)
-
 	try {
 		// Clear current task if it matches the ID being deleted
 		if (id === controller.task?.taskId) {
 			await controller.clearTask()
-			console.debug("cleared task")
+			Logger.debug("cleared task")
 		}
 
 		// Get task file paths
@@ -77,13 +76,13 @@ async function deleteTaskWithId(controller: Controller, id: string): Promise<voi
 		try {
 			await fs.rmdir(taskDirPath) // succeeds if the dir is empty
 		} catch (error) {
-			console.debug("Could not remove task directory (may not be empty):", error)
+			Logger.debug("Could not remove task directory (may not be empty):", error)
 		}
 
 		// If no tasks remain, clean up everything
 		if (updatedTaskHistory.length === 0) {
-			const taskDirPath = path.join(controller.context.globalStorageUri.fsPath, "tasks")
-			const checkpointsDirPath = path.join(controller.context.globalStorageUri.fsPath, "checkpoints")
+			const taskDirPath = path.join(HostProvider.get().globalStorageFsPath, "tasks")
+			const checkpointsDirPath = path.join(HostProvider.get().globalStorageFsPath, "checkpoints")
 
 			if (await fileExistsAtPath(taskDirPath)) {
 				await fs.rm(taskDirPath, { recursive: true, force: true })
@@ -93,7 +92,7 @@ async function deleteTaskWithId(controller: Controller, id: string): Promise<voi
 			}
 		}
 	} catch (error) {
-		console.debug(`Error deleting task ${id}:`, error)
+		Logger.debug(`Error deleting task ${id}:`, error)
 		throw error // Re-throw to let caller handle the error
 	}
 

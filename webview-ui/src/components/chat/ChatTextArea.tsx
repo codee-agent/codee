@@ -1,26 +1,33 @@
+import { PulsingBorder } from "@paper-design/shaders-react"
 import { mentionRegex, mentionRegexGlobal } from "@shared/context-mentions"
 import { EmptyRequest, StringRequest } from "@shared/proto/cline/common"
+import { EnhancePromptsRequest } from "@shared/proto/index.cline"
 import { FileSearchRequest, FileSearchType, RelativePathsRequest } from "@shared/proto/cline/file"
 import { UpdateApiConfigurationRequest } from "@shared/proto/cline/models"
 import { PlanActMode, TogglePlanActModeRequest } from "@shared/proto/cline/state"
 import { convertApiConfigurationToProto } from "@shared/proto-conversions/models/api-configuration-conversion"
+import { type SlashCommand } from "@shared/slashCommands"
 import { Mode } from "@shared/storage/types"
 import { VSCodeButton } from "@vscode/webview-ui-toolkit/react"
+import { AtSignIcon, PlusIcon } from "lucide-react"
 import type React from "react"
 import { forwardRef, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import DynamicTextArea from "react-textarea-autosize"
-import { useClickAway, useWindowSize } from "react-use"
+import { useWindowSize } from "react-use"
 import styled from "styled-components"
 import ContextMenu from "@/components/chat/ContextMenu"
 import { CHAT_CONSTANTS } from "@/components/chat/chat-view/constants"
+import ModelPickerModal from "@/components/chat/ModelPickerModal"
 import SlashCommandMenu from "@/components/chat/SlashCommandMenu"
 import { CODE_BLOCK_BG_COLOR } from "@/components/common/CodeBlock"
 import Thumbnails from "@/components/common/Thumbnails"
-import Tooltip from "@/components/common/Tooltip"
-import ApiOptions from "@/components/settings/ApiOptions"
 import { getModeSpecificFields, normalizeApiConfiguration } from "@/components/settings/utils/providerUtils"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { useClineAuth } from "@/context/ClineAuthContext"
 import { useExtensionState } from "@/context/ExtensionStateContext"
-import { FileServiceClient, ModelsServiceClient, StateServiceClient } from "@/services/grpc-client"
+import { usePlatform } from "@/context/PlatformContext"
+import { cn } from "@/lib/utils"
+import { FileServiceClient, ModelsServiceClient, StateServiceClient, BusinessServiceClient } from "@/services/grpc-client"
 import {
 	ContextMenuOptionType,
 	getContextMenuOptionIndex,
@@ -37,18 +44,15 @@ import {
 	getMatchingSlashCommands,
 	insertSlashCommand,
 	removeSlashCommand,
-	type SlashCommand,
 	shouldShowSlashCommandsMenu,
 	slashCommandDeleteRegex,
+	slashCommandRegexGlobal,
 	validateSlashCommand,
 } from "@/utils/slash-commands"
 import { validateApiConfiguration, validateModelId } from "@/utils/validate"
 import ClineRulesToggleModal from "../cline-rules/ClineRulesToggleModal"
 import ServersToggleModal from "./ServersToggleModal"
-import { useTranslation } from "react-i18next"
-import { vscode } from "@/utils/vscode"
-import { BusinessServiceClient } from "@/services/grpc-client"
-import { EnhancePromptsRequest } from "@shared/proto/index.cline"
+import VoiceRecorder from "./VoiceRecorder"
 
 const { MAX_IMAGES_AND_FILES_PER_MESSAGE } = CHAT_CONSTANTS
 
@@ -100,34 +104,18 @@ interface GitCommit {
 const PLAN_MODE_COLOR = "var(--vscode-activityWarningBadge-background)"
 const ACT_MODE_COLOR = "var(--vscode-focusBorder)"
 
-const SwitchOption = styled.div.withConfig({
-	shouldForwardProp: (prop) => !["isActive"].includes(prop),
-})<{ isActive: boolean }>`
-	padding: 2px 8px;
-	color: ${(props) => (props.isActive ? "white" : "var(--vscode-input-foreground)")};
-	z-index: 1;
-	transition: color 0.2s ease;
-	font-size: 12px;
-	width: 50%;
-	text-align: center;
-
-	&:hover {
-		background-color: ${(props) => (!props.isActive ? "var(--vscode-toolbar-hoverBackground)" : "transparent")};
-	}
-`
-
 const SwitchContainer = styled.div<{ disabled: boolean }>`
 	display: flex;
 	align-items: center;
-	background-color: var(--vscode-editor-background);
+	background-color: transparent;
 	border: 1px solid var(--vscode-input-border);
 	border-radius: 12px;
 	overflow: hidden;
 	cursor: ${(props) => (props.disabled ? "not-allowed" : "pointer")};
 	opacity: ${(props) => (props.disabled ? 0.5 : 1)};
-	transform: scale(0.85);
+	transform: scale(1);
 	transform-origin: right center;
-	margin-left: -10px; // compensate for the transform so flex spacing works
+	margin-left: 0;
 	user-select: none; // Prevent text selection
 `
 
@@ -160,14 +148,6 @@ const ButtonContainer = styled.div`
 	width: 100%;
 `
 
-const ControlsContainer = styled.div`
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	margin-top: -5px;
-	padding: 0px 15px 5px 15px;
-`
-
 const ModelSelectorTooltip = styled.div<ModelSelectorTooltipProps>`
 	position: fixed;
 	bottom: calc(100% + 9px);
@@ -175,7 +155,7 @@ const ModelSelectorTooltip = styled.div<ModelSelectorTooltipProps>`
 	right: 15px;
 	background: ${CODE_BLOCK_BG_COLOR};
 	border: 1px solid var(--vscode-editorGroup-border);
-	padding: 12px;
+	padding: 12px 12px 18px 12px;
 	border-radius: 3px;
 	z-index: 1000;
 	max-height: calc(100vh - 100px);
@@ -267,7 +247,6 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 	(
 		{
 			inputValue,
-			activeQuote,
 			setInputValue,
 			sendingDisabled,
 			placeholderText,
@@ -283,14 +262,25 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 		},
 		ref,
 	) => {
-	
-		const { t } = useTranslation()
-		const { mode, apiConfiguration, openRouterModels, platform, localWorkflowToggles, globalWorkflowToggles } =
-			useExtensionState()
+		const {
+			mode,
+			apiConfiguration,
+			openRouterModels,
+			platform,
+			localWorkflowToggles,
+			globalWorkflowToggles,
+			remoteWorkflowToggles,
+			remoteConfigSettings,
+			showChatModelSelector: showModelSelector,
+			setShowChatModelSelector: setShowModelSelector,
+			dictationSettings,
+			mcpServers,
+		} = useExtensionState()
+		const { clineUser } = useClineAuth()
 		const [isTextAreaFocused, setIsTextAreaFocused] = useState(false)
 		const [isDraggingOver, setIsDraggingOver] = useState(false)
 		const [gitCommits, setGitCommits] = useState<GitCommit[]>([])
-
+		const [isVoiceRecording, setIsVoiceRecording] = useState(false)
 		const [showSlashCommandsMenu, setShowSlashCommandsMenu] = useState(false)
 		const [selectedSlashCommandsIndex, setSelectedSlashCommandsIndex] = useState(0)
 		const [slashCommandsQuery, setSlashCommandsQuery] = useState("")
@@ -310,7 +300,7 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 		const [justDeletedSpaceAfterSlashCommand, setJustDeletedSpaceAfterSlashCommand] = useState(false)
 		const [intendedCursorPosition, setIntendedCursorPosition] = useState<number | null>(null)
 		const contextMenuContainerRef = useRef<HTMLDivElement>(null)
-		const [showModelSelector, setShowModelSelector] = useState(false)
+
 		const modelSelectorRef = useRef<HTMLDivElement>(null)
 		const { width: viewportWidth, height: viewportHeight } = useWindowSize()
 		const buttonRef = useRef<HTMLDivElement>(null)
@@ -327,7 +317,7 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 		const [fileSearchResults, setFileSearchResults] = useState<SearchResult[]>([])
 		const [searchLoading, setSearchLoading] = useState(false)
 		const [, metaKeyChar] = useMetaKeyDetection(platform)
-		const [isEnhancing, setIsEnhancing] = useState(false) //wangyuan
+		const [isEnhancing, setIsEnhancing] = useState(false)
 
 		// Add a ref to track previous menu state
 		const prevShowModelSelector = useRef(showModelSelector)
@@ -419,7 +409,7 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 							setSearchLoading(true)
 
 							// Map ContextMenuOptionType to FileSearchType enum
-							let searchType
+							let searchType: FileSearchType | undefined
 							if (type === ContextMenuOptionType.File) {
 								searchType = FileSearchType.FILE
 							} else if (type === ContextMenuOptionType.Folder) {
@@ -449,6 +439,9 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 
 				setShowContextMenu(false)
 				setSelectedType(null)
+				const queryLength = searchQuery.length
+				setSearchQuery("")
+
 				if (textAreaRef.current) {
 					let insertValue = value || ""
 					if (type === ContextMenuOptionType.URL) {
@@ -463,7 +456,12 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 						insertValue = value || ""
 					}
 
-					const { newValue, mentionIndex } = insertMention(textAreaRef.current.value, cursorPosition, insertValue)
+					const { newValue, mentionIndex } = insertMention(
+						textAreaRef.current.value,
+						cursorPosition,
+						insertValue,
+						queryLength,
+					)
 
 					setInputValue(newValue)
 					const newCursorPosition = newValue.indexOf(" ", mentionIndex + insertValue.length) + 1
@@ -480,15 +478,22 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 					}, 0)
 				}
 			},
-			[setInputValue, cursorPosition],
+			[setInputValue, cursorPosition, searchQuery],
 		)
 
 		const handleSlashCommandsSelect = useCallback(
 			(command: SlashCommand) => {
 				setShowSlashCommandsMenu(false)
+				const queryLength = slashCommandsQuery.length
+				setSlashCommandsQuery("")
 
 				if (textAreaRef.current) {
-					const { newValue, commandIndex } = insertSlashCommand(textAreaRef.current.value, command.name)
+					const { newValue, commandIndex } = insertSlashCommand(
+						textAreaRef.current.value,
+						command.name,
+						queryLength,
+						cursorPosition,
+					)
 					const newCursorPosition = newValue.indexOf(" ", commandIndex + 1 + command.name.length) + 1
 
 					setInputValue(newValue)
@@ -503,14 +508,14 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 					}, 0)
 				}
 			},
-			[setInputValue],
+			[setInputValue, slashCommandsQuery, cursorPosition],
 		)
-
 		const handleKeyDown = useCallback(
 			(event: React.KeyboardEvent<HTMLTextAreaElement>) => {
 				if (showSlashCommandsMenu) {
 					if (event.key === "Escape") {
 						setShowSlashCommandsMenu(false)
+						setSlashCommandsQuery("")
 						return
 					}
 
@@ -523,6 +528,9 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 								slashCommandsQuery,
 								localWorkflowToggles,
 								globalWorkflowToggles,
+								remoteWorkflowToggles,
+								remoteConfigSettings?.remoteGlobalWorkflows,
+								mcpServers,
 							)
 
 							if (allCommands.length === 0) {
@@ -541,7 +549,14 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 
 					if ((event.key === "Enter" || event.key === "Tab") && selectedSlashCommandsIndex !== -1) {
 						event.preventDefault()
-						const commands = getMatchingSlashCommands(slashCommandsQuery, localWorkflowToggles, globalWorkflowToggles)
+						const commands = getMatchingSlashCommands(
+							slashCommandsQuery,
+							localWorkflowToggles,
+							globalWorkflowToggles,
+							remoteWorkflowToggles,
+							remoteConfigSettings?.remoteGlobalWorkflows,
+							mcpServers,
+						)
 						if (commands.length > 0) {
 							handleSlashCommandsSelect(commands[selectedSlashCommandsIndex])
 						}
@@ -550,9 +565,10 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 				}
 				if (showContextMenu) {
 					if (event.key === "Escape") {
-						// event.preventDefault()
+						setShowContextMenu(false)
 						setSelectedType(null)
 						setSelectedMenuIndex(DEFAULT_CONTEXT_MENU_OPTION)
+						setSearchQuery("")
 						return
 					}
 
@@ -578,13 +594,13 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 							}
 
 							// Find the index of the next selectable option
-							const currentSelectableIndex = selectableOptions.findIndex((option) => option === options[prevIndex])
+							const currentSelectableIndex = selectableOptions.indexOf(options[prevIndex])
 
 							const newSelectableIndex =
 								(currentSelectableIndex + direction + selectableOptions.length) % selectableOptions.length
 
 							// Find the index of the selected option in the original options array
-							return options.findIndex((option) => option === selectableOptions[newSelectableIndex])
+							return options.indexOf(selectableOptions[newSelectableIndex])
 						})
 						return
 					}
@@ -598,7 +614,9 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 							selectedOption.type !== ContextMenuOptionType.URL &&
 							selectedOption.type !== ContextMenuOptionType.NoResults
 						) {
-							handleMentionSelect(selectedOption.type, selectedOption.value)
+							// Use label if it contains workspace prefix, otherwise use value
+							const mentionValue = selectedOption.label?.includes(":") ? selectedOption.label : selectedOption.value
+							handleMentionSelect(selectedOption.type, mentionValue)
 						}
 						return
 					}
@@ -753,7 +771,9 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 				setShowContextMenu(showMenu)
 
 				if (showSlashCommandsMenu) {
-					const slashIndex = newValue.indexOf("/")
+					// Find the slash nearest to cursor (before cursor position)
+					const beforeCursor = newValue.slice(0, newCursorPosition)
+					const slashIndex = beforeCursor.lastIndexOf("/")
 					const query = newValue.slice(slashIndex + 1, newCursorPosition)
 					setSlashCommandsQuery(query)
 					setSelectedSlashCommandsIndex(0)
@@ -768,7 +788,7 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 					setSearchQuery(query)
 					currentSearchQueryRef.current = query
 
-					if (query.length > 0 && !selectedType) {
+					if (query.length > 0) {
 						setSelectedMenuIndex(0)
 
 						// Clear any existing timeout
@@ -778,13 +798,30 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 
 						setSearchLoading(true)
 
+						const searchType =
+							selectedType === ContextMenuOptionType.File
+								? FileSearchType.FILE
+								: selectedType === ContextMenuOptionType.Folder
+									? FileSearchType.FOLDER
+									: undefined
+
+						// Parse workspace hint from query (e.g., "@frontend:/filename")
+						let workspaceHint: string | undefined
+						let searchQuery = query
+						const workspaceHintMatch = query.match(/^([\w-]+):\/(.*)$/)
+						if (workspaceHintMatch) {
+							workspaceHint = workspaceHintMatch[1]
+							searchQuery = workspaceHintMatch[2]
+						}
+
 						// Set a timeout to debounce the search requests
 						searchTimeoutRef.current = setTimeout(() => {
 							FileServiceClient.searchFiles(
 								FileSearchRequest.create({
-									query: query,
+									query: searchQuery,
 									mentionsRequestId: query,
-									selectedType: undefined, // No type filter for general search
+									selectedType: searchType,
+									workspaceHint: workspaceHint,
 								}),
 							)
 								.then((results) => {
@@ -959,30 +996,38 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 				// highlight @mentions
 				.replace(mentionRegexGlobal, '<mark class="mention-context-textarea-highlight">$&</mark>')
 
-			// check for highlighting /slash-commands
-			if (/^\s*\//.test(processedText)) {
-				const slashIndex = processedText.indexOf("/")
+			// Highlight only the FIRST valid /slash-command in the text
+			// Only one slash command is processed per message, so we only highlight the first one
+			slashCommandRegexGlobal.lastIndex = 0
+			let hasHighlightedSlashCommand = false
+			processedText = processedText.replace(slashCommandRegexGlobal, (match, prefix, command) => {
+				// Only highlight the first valid slash command
+				if (hasHighlightedSlashCommand) {
+					return match
+				}
 
-				// end of command is end of text or first whitespace
-				const spaceIndex = processedText.indexOf(" ", slashIndex)
-				const endIndex = spaceIndex > -1 ? spaceIndex : processedText.length
-
-				// extract and validate the exact command text
-				const commandText = processedText.substring(slashIndex + 1, endIndex)
-				const isValidCommand = validateSlashCommand(commandText, localWorkflowToggles, globalWorkflowToggles)
+				// Extract just the command name (without the slash)
+				const commandName = command.substring(1)
+				const isValidCommand = validateSlashCommand(
+					commandName,
+					localWorkflowToggles,
+					globalWorkflowToggles,
+					remoteWorkflowToggles,
+					remoteConfigSettings?.remoteGlobalWorkflows,
+				)
 
 				if (isValidCommand) {
-					const fullCommand = processedText.substring(slashIndex, endIndex) // includes slash
-
-					const highlighted = `<mark class="mention-context-textarea-highlight">${fullCommand}</mark>`
-					processedText = processedText.substring(0, slashIndex) + highlighted + processedText.substring(endIndex)
+					hasHighlightedSlashCommand = true
+					// Keep the prefix (whitespace or empty) and wrap the command in highlight
+					return `${prefix}<mark class="mention-context-textarea-highlight">${command}</mark>`
 				}
-			}
+				return match
+			})
 
 			highlightLayerRef.current.innerHTML = processedText
 			highlightLayerRef.current.scrollTop = textAreaRef.current.scrollTop
 			highlightLayerRef.current.scrollLeft = textAreaRef.current.scrollLeft
-		}, [localWorkflowToggles, globalWorkflowToggles])
+		}, [localWorkflowToggles, globalWorkflowToggles, remoteWorkflowToggles, remoteConfigSettings])
 
 		useLayoutEffect(() => {
 			updateHighlights()
@@ -1059,7 +1104,7 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 			}, changeModeDelay)
 		}, [mode, showModelSelector, submitApiConfig, inputValue, selectedImages, selectedFiles])
 
-		useShortcut("Meta+Shift+a", onModeToggle, { disableTextInputs: false }) // important that we don't disable the text input here
+		useShortcut(usePlatform().togglePlanActKeys, onModeToggle, { disableTextInputs: false }) // important that we don't disable the text input here
 
 		const handleContextButtonClick = useCallback(() => {
 			// Focus the textarea first
@@ -1102,45 +1147,30 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 			updateHighlights()
 		}, [inputValue, handleInputChange, updateHighlights])
 
-		// Use an effect to detect menu close
-		useEffect(() => {
-			if (prevShowModelSelector.current && !showModelSelector) {
-				// Menu was just closed
-				submitApiConfig()
-			}
-			prevShowModelSelector.current = showModelSelector
-		}, [showModelSelector, submitApiConfig])
-
-		// Remove the handleApiConfigSubmit callback
-		// Update click handler to just toggle the menu
 		const handleModelButtonClick = () => {
 			setShowModelSelector(!showModelSelector)
 		}
 
-		// Update click away handler to just close menu
-		useClickAway(modelSelectorRef, () => {
-			setShowModelSelector(false)
-		})
-
 		// Get model display name
 		const modelDisplayName = useMemo(() => {
 			const { selectedProvider, selectedModelId } = normalizeApiConfiguration(apiConfiguration, mode)
+			console.log('modelDisplayName', selectedProvider, 'id', selectedModelId)
 			const {
 				vsCodeLmModelSelector,
 				togetherModelId,
-				fireworksModelId,
 				lmStudioModelId,
 				ollamaModelId,
 				liteLlmModelId,
 				requestyModelId,
-				codeeModelId,
+				vercelAiGatewayModelId,
 			} = getModeSpecificFields(apiConfiguration, mode)
 			const unknownModel = "unknown"
+
 			if (!apiConfiguration) {
 				return unknownModel
 			}
 			switch (selectedProvider) {
-				case "codee":
+				case "cline":
 					return `${selectedProvider}:${selectedModelId}`
 				case "openai":
 					return `openai-compat:${selectedModelId}`
@@ -1156,6 +1186,8 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 					return `${selectedProvider}:${liteLlmModelId}`
 				case "requesty":
 					return `${selectedProvider}:${requestyModelId}`
+				case "vercel-ai-gateway":
+					return `${selectedProvider}:${vercelAiGatewayModelId || selectedModelId}`
 				case "anthropic":
 				case "openrouter":
 				default:
@@ -1307,7 +1339,9 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 			}
 
 			// 1c. Filter for valid schemes (file or vscode-file) and non-empty strings
-			const validUris = uris.filter((uri) => uri && (uri.startsWith("vscode-file:") || uri.startsWith("file:")))
+			const validUris = uris.filter(
+				(uri) => uri && (uri.startsWith("vscode-file:") || uri.startsWith("file:") || uri.startsWith("vscode-remote:")),
+			)
 
 			if (validUris.length > 0) {
 				setPendingInsertions([])
@@ -1417,89 +1451,79 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 				),
 			)
 		}
+		// Replace Meta with the platform specific key and uppercase the command letter.
+		const togglePlanActKeys = usePlatform()
+			.togglePlanActKeys.replace("Meta", metaKeyChar)
+			.replace(/.$/, (match) => match.toUpperCase())
 
 		const handleEnhancePrompt = useCallback(() => {
 			if (!inputValue.trim() || isEnhancing) return
 
 			setIsEnhancing(true)
-			BusinessServiceClient.enhancePrompts(EnhancePromptsRequest.create({
-				mode: mode,
-				input: inputValue.trim(),
-			})).then(response => {
+			BusinessServiceClient.enhancePrompts(
+				EnhancePromptsRequest.create({
+					mode: mode,
+					input: inputValue.trim(),
+				}),
+			).then((response) => {
 				if (response.value) {
-						// Remove <think> and <thinking> tags (case insensitive) and their contents
-						// console.log("原始文本:", message.text);
-						// console.log("正则表达式:", /<think>.*?<\/think>|<thinking>.*?<\/thinking>/gis);
-						const cleanedText = response.value.replace(/<think>.*?<\/think>|<thinking>.*?<\/thinking>/gis, "")
-						// console.log("处理后文本:", cleanedText);
-						setInputValue(cleanedText)
-						setIsEnhancing(false)
-					}
+					// Remove <think> and <thinking> tags (case insensitive) and their contents
+					// console.log("原始文本:", message.text);
+					// console.log("正则表达式:", /<think>.*?<\/think>|<thinking>.*?<\/thinking>/gis);
+					const cleanedText = response.value.replace(/<think>.*?<\/think>|<thinking>.*?<\/thinking>/gis, "")
+					// console.log("处理后文本:", cleanedText);
+					setInputValue(cleanedText)
+					setIsEnhancing(false)
+				}
 			})
 		}, [inputValue, isEnhancing])
 
 		return (
 			<div>
 				<div
+					className="relative flex transition-colors ease-in-out duration-100 px-3.5 py-2.5"
 					onDragEnter={handleDragEnter}
 					onDragLeave={handleDragLeave}
 					onDragOver={onDragOver}
-					onDrop={onDrop}
-					style={{
-						padding: "10px 15px",
-						opacity: 1,
-						position: "relative",
-						display: "flex",
-						// Drag-over styles moved to DynamicTextArea
-						transition: "background-color 0.1s ease-in-out, border 0.1s ease-in-out",
-					}}>
-					{showDimensionError && (
+					onDrop={onDrop}>
+					{isVoiceRecording && (
 						<div
-							style={{
-								position: "absolute",
-								inset: "10px 15px",
-								backgroundColor: "rgba(var(--vscode-errorForeground-rgb), 0.1)",
-								border: "2px solid var(--vscode-errorForeground)",
-								borderRadius: 2,
-								display: "flex",
-								alignItems: "center",
-								justifyContent: "center",
-								zIndex: 10, // Ensure it's above other elements
-								pointerEvents: "none",
-							}}>
-							<span
-								style={{
-									color: "var(--vscode-errorForeground)",
-									fontWeight: "bold",
-									fontSize: "12px",
-									textAlign: "center",
-								}}>
-								Image dimensions exceed 7500px
-							</span>
+							className={cn(
+								"absolute pointer-events-none z-10 overflow-hidden rounded-xs transition-all ease-in-out duration-300 left-3.5 right-3.5 top-2.5 bottom-2.5",
+							)}>
+							<PulsingBorder
+								bloom={1}
+								className="w-full h-full"
+								colorBack={"rgba(0,0,0,0)"}
+								colors={[
+									"#9d57fa", // purple
+									"#57c7fa", // cyan
+									"#fa57a8", // pink
+									"#9d57fa", // purple again for smooth loop
+								]}
+								intensity={0.4}
+								pulse={0.3}
+								roundness={0} // Match textarea border radius
+								scale={1.0}
+								smoke={0.25}
+								smokeSize={0.8}
+								softness={0.8}
+								speed={1.5}
+								spotSize={0.5}
+								spots={4}
+								thickness={0.1}
+							/>
+						</div>
+					)}
+
+					{showDimensionError && (
+						<div className="absolute inset-2.5 bg-[rgba(var(--vscode-errorForeground-rgb),0.1)] border-2 border-error rounded-xs flex items-center justify-center z-10 pointer-events-none">
+							<span className="text-error font-bold text-xs text-center">Image dimensions exceed 7500px</span>
 						</div>
 					)}
 					{showUnsupportedFileError && (
-						<div
-							style={{
-								position: "absolute",
-								inset: "10px 15px",
-								backgroundColor: "rgba(var(--vscode-errorForeground-rgb), 0.1)",
-								border: "2px solid var(--vscode-errorForeground)",
-								borderRadius: 2,
-								display: "flex",
-								alignItems: "center",
-								justifyContent: "center",
-								zIndex: 10,
-								pointerEvents: "none",
-							}}>
-							<span
-								style={{
-									color: "var(--vscode-errorForeground)",
-									fontWeight: "bold",
-									fontSize: "12px",
-								}}>
-								Files other than images are currently disabled
-							</span>
+						<div className="absolute inset-2.5 bg-[rgba(var(--vscode-errorForeground-rgb),0.1)] border-2 border-error rounded-xs flex items-center justify-center z-10 pointer-events-none">
+							<span className="text-error font-bold text-xs">Files other than images are currently disabled</span>
 						</div>
 					)}
 					{showSlashCommandsMenu && (
@@ -1507,9 +1531,12 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 							<SlashCommandMenu
 								globalWorkflowToggles={globalWorkflowToggles}
 								localWorkflowToggles={localWorkflowToggles}
+								mcpServers={mcpServers}
 								onMouseDown={handleMenuMouseDown}
 								onSelect={handleSlashCommandsSelect}
 								query={slashCommandsQuery}
+								remoteWorkflows={remoteConfigSettings?.remoteGlobalWorkflows}
+								remoteWorkflowToggles={remoteWorkflowToggles}
 								selectedIndex={selectedSlashCommandsIndex}
 								setSelectedIndex={setSelectedSlashCommandsIndex}
 							/>
@@ -1531,42 +1558,30 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 							/>
 						</div>
 					)}
-					{!isTextAreaFocused && !activeQuote && (
-						<div
-							style={{
-								position: "absolute",
-								inset: "10px 15px",
-								border: "1px solid var(--vscode-input-border)",
-								borderRadius: 2,
-								pointerEvents: "none",
-								zIndex: 5,
-							}}
-						/>
-					)}
 					<div
+						className={cn(
+							"absolute bottom-2.5 top-2.5 whitespace-pre-wrap break-words rounded-xs overflow-hidden bg-input-background",
+							isTextAreaFocused || isVoiceRecording
+								? "left-3.5 right-3.5"
+								: "left-3.5 right-3.5 border border-input-border",
+						)}
 						ref={highlightLayerRef}
 						style={{
 							position: "absolute",
-							top: 10,
-							left: 15,
-							right: 15,
-							bottom: 10,
 							pointerEvents: "none",
 							whiteSpace: "pre-wrap",
 							wordWrap: "break-word",
 							color: "transparent",
 							overflow: "hidden",
-							backgroundColor: "var(--vscode-input-background)",
 							fontFamily: "var(--vscode-font-family)",
 							fontSize: "var(--vscode-editor-font-size)",
 							lineHeight: "var(--vscode-editor-line-height)",
 							borderRadius: 2,
-							borderLeft: 0,
-							borderRight: 0,
-							borderTop: 0,
-							borderColor: "transparent",
-							borderBottom: `${thumbnailsHeight}px solid transparent`,
-							padding: "9px 28px 9px 9px",
+							borderLeft: isTextAreaFocused || isVoiceRecording ? 0 : undefined,
+							borderRight: isTextAreaFocused || isVoiceRecording ? 0 : undefined,
+							borderTop: isTextAreaFocused || isVoiceRecording ? 0 : undefined,
+							borderBottom: isTextAreaFocused || isVoiceRecording ? 0 : undefined,
+							padding: `9px ${dictationSettings?.dictationEnabled ? "48" : "28"}px ${9 + thumbnailsHeight}px 9px`,
 						}}
 					/>
 					<DynamicTextArea
@@ -1629,7 +1644,7 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 							// borderLeft: "9px solid transparent", // NOTE: react-textarea-autosize doesn't calculate correct height when using borderLeft/borderRight so we need to use horizontal padding instead
 							// Instead of using boxShadow, we use a div with a border to better replicate the behavior when the textarea is focused
 							// boxShadow: "0px 0px 0px 1px var(--vscode-input-border)",
-							padding: "9px 28px 9px 9px",
+							padding: `9px ${dictationSettings?.dictationEnabled ? "48" : "28"}px 9px 9px`,
 							cursor: "text",
 							flex: 1,
 							zIndex: 1,
@@ -1637,14 +1652,14 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 								isDraggingOver && !showUnsupportedFileError // Only show drag outline if not showing error
 									? "2px dashed var(--vscode-focusBorder)"
 									: isTextAreaFocused
-										? `2px solid ${mode === "plan" ? PLAN_MODE_COLOR : "var(--vscode-focusBorder)"}`
-										: `2px solid ${mode === "plan" ? PLAN_MODE_COLOR : "var(--vscode-focusBorder)"}`,
-							outlineOffset: isDraggingOver && !showUnsupportedFileError ? "2px" : "0px", // Add offset for drag-over outline
+										? `1px solid ${mode === "plan" ? PLAN_MODE_COLOR : "var(--vscode-focusBorder)"}`
+										: "none",
+							outlineOffset: isDraggingOver && !showUnsupportedFileError ? "1px" : "0px", // Add offset for drag-over outline
 						}}
 						value={inputValue}
 					/>
 					{!inputValue && selectedImages.length === 0 && selectedFiles.length === 0 && (
-						<div className="absolute bottom-4 left-[25px] right-[60px] text-[10px] text-[var(--vscode-input-placeholderForeground)] opacity-70 whitespace-nowrap overflow-hidden text-ellipsis pointer-events-none z-[1]">
+						<div className="text-xs absolute bottom-5 left-6.5 right-16 text-(--vscode-input-placeholderForeground)/50 whitespace-nowrap overflow-hidden text-ellipsis pointer-events-none z-1">
 							Type @ for context, / for slash commands & workflows, hold shift to drag in files/images
 						</div>
 					)}
@@ -1666,177 +1681,175 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 						/>
 					)}
 					<div
-						style={{
-							position: "absolute",
-							right: 23,
-							display: "flex",
-							alignItems: "flex-end",
-							height: textAreaBaseHeight || 31,
-							bottom: 9.5, // should be 10 but doesn't look good on mac
-							paddingBottom: "8px",
-							zIndex: 2,
-						}}>
-						<div
-							style={{
-								display: "flex",
-								flexDirection: "row",
-								alignItems: "center",
-							}}>
-							{/* <div
-								className={`input-icon-button ${shouldDisableImages ? "disabled" : ""} codicon codicon-device-camera`}
-								onClick={() => {
-									if (!shouldDisableImages) {
-										onSelectImages()
-									}
-								}}
-								style={{
-									marginRight: 5.5,
-									fontSize: 16.5,
-								}}
-							/> */}
-							<div
-								data-testid="enhance-button"
-								className={`input-icon-button ${
-									!inputValue.trim() || isEnhancing || sendingDisabled ? "disabled" : ""
-								} codicon codicon-sparkle ${isEnhancing ? "loading" : ""}`}
-								onClick={handleEnhancePrompt}
-								style={{
-									marginRight: 5.5,
-									fontSize: 16.5,
-								}}
-							/>
-							<div
-								className={`input-icon-button ${sendingDisabled ? "disabled" : ""} codicon codicon-send`}
-								data-testid="send-button"
-								onClick={() => {
-									if (!sendingDisabled) {
-										setIsTextAreaFocused(false)
-										onSend()
-									}
-								}}
-								style={{ fontSize: 15 }}
-								title={t("chat.send")} //huqb
-							></div>
+						className="absolute flex items-end bottom-4.5 right-5 z-10 h-8 text-xs"
+						style={{ height: textAreaBaseHeight }}>
+						<div className="flex flex-row items-center">
+							{dictationSettings?.dictationEnabled === true && dictationSettings?.featureEnabled && (
+								<VoiceRecorder
+									disabled={sendingDisabled}
+									isAuthenticated={!!clineUser?.uid}
+									language={dictationSettings?.dictationLanguage || "en"}
+									onProcessingStateChange={(isProcessing, message) => {
+										if (isProcessing && message) {
+											// Show processing message in input
+											setInputValue(`${inputValue} [${message}]`.trim())
+										}
+										// When processing is done, the onTranscription callback will handle the final text
+									}}
+									onRecordingStateChange={setIsVoiceRecording}
+									onTranscription={(text) => {
+										// Remove any processing text first
+										const processingPattern = /\s*\[Transcribing\.\.\.\]$/
+										const cleanedValue = inputValue.replace(processingPattern, "")
+
+										if (!text) {
+											setInputValue(cleanedValue)
+											return
+										}
+
+										// Append the transcribed text to the cleaned input
+										const newValue = cleanedValue + (cleanedValue ? " " : "") + text
+										setInputValue(newValue)
+										// Focus the textarea and move cursor to end
+										setTimeout(() => {
+											if (textAreaRef.current) {
+												textAreaRef.current.focus()
+												const length = newValue.length
+												textAreaRef.current.setSelectionRange(length, length)
+											}
+										}, 0)
+									}}
+								/>
+							)}
+							{!isVoiceRecording && (
+								<div>
+									<div
+										className={`input-icon-button ${
+											!inputValue.trim() || isEnhancing || sendingDisabled ? "disabled" : ""
+										} codicon codicon-sparkle ${isEnhancing ? "loading" : ""}`}
+										data-testid="enhance-button"
+										onClick={handleEnhancePrompt}
+										style={{
+											marginRight: 5.5,
+											fontSize: 16.5,
+										}}
+									/>
+									<div
+										className={cn(
+											"input-icon-button",
+											{ disabled: sendingDisabled },
+											"codicon codicon-send text-sm",
+										)}
+										data-testid="send-button"
+										onClick={() => {
+											if (!sendingDisabled) {
+												setIsTextAreaFocused(false)
+												onSend()
+											}
+										}}
+									/>
+								</div>
+							)}
 						</div>
 					</div>
 				</div>
-
-				<ControlsContainer>
+				<div className="flex justify-between items-center -mt-[2px] px-3 pb-2">
 					{/* Always render both components, but control visibility with CSS */}
-					<div
-						style={{
-							position: "relative",
-							flex: 1,
-							minWidth: 0,
-							height: "28px", // Fixed height to prevent container shrinking
-						}}>
+					<div className="relative flex-1 min-w-0 h-5">
 						{/* ButtonGroup - always in DOM but visibility controlled */}
-						<ButtonGroup
-							style={{
-								position: "absolute",
-								top: 0,
-								left: 0,
-								right: 0,
-								transition: "opacity 0.3s ease-in-out",
-								width: "100%",
-								height: "100%",
-								zIndex: 6,
-							}}>
-							<Tooltip style={{ left: 0 }} tipText="Add Context">
-								<VSCodeButton
-									appearance="icon"
-									aria-label={t("chat.addContext")}
-									data-testid="context-button"
-									onClick={handleContextButtonClick}
-									style={{ padding: "0px 0px", height: "20px" }}>
-									<ButtonContainer>
-										<span className="flex items-center" style={{ fontSize: "13px", marginBottom: 1 }}>
-											@
-										</span>
-									</ButtonContainer>
-								</VSCodeButton>
+						<ButtonGroup className="absolute top-0 left-0 right-0 ease-in-out w-full h-5 z-10 flex items-center">
+							<Tooltip>
+								<TooltipContent>Add Context</TooltipContent>
+								<TooltipTrigger>
+									<VSCodeButton
+										appearance="icon"
+										aria-label="Add Context"
+										className="p-0 m-0 flex items-center"
+										data-testid="context-button"
+										onClick={handleContextButtonClick}>
+										<ButtonContainer>
+											<AtSignIcon size={12} />
+										</ButtonContainer>
+									</VSCodeButton>
+								</TooltipTrigger>
 							</Tooltip>
 
-							<Tooltip tipText="Add Files & Images">
-								<VSCodeButton
-									appearance="icon"
-									aria-label={t("chat.addImages")}
-									data-testid="files-button"
-									disabled={shouldDisableFilesAndImages}
-									onClick={() => {
-										if (!shouldDisableFilesAndImages) {
-											onSelectFilesAndImages()
-										}
-									}}
-									style={{ padding: "0px 0px", height: "20px" }}>
-									<ButtonContainer>
-										<span
-											className="codicon codicon-add flex items-center"
-											style={{ fontSize: "14px", marginBottom: -3 }}
-										/>
-									</ButtonContainer>
-								</VSCodeButton>
-							</Tooltip>
-							<ServersToggleModal />
-							<ClineRulesToggleModal />
-							<ModelContainer ref={modelSelectorRef}>
-								<ModelButtonWrapper ref={buttonRef}>
-									<ModelDisplayButton
-										disabled={false}
-										isActive={showModelSelector}
-										onClick={handleModelButtonClick}
-										role="button"
-										tabIndex={0}
-										title="Select Model / API Provider">
-										<ModelButtonContent>{modelDisplayName}</ModelButtonContent>
-									</ModelDisplayButton>
-								</ModelButtonWrapper>
-								{showModelSelector && (
-									<ModelSelectorTooltip
-										arrowPosition={arrowPosition}
-										menuPosition={menuPosition}
-										style={{
-											bottom: `calc(100vh - ${menuPosition}px + 6px)`,
+							<Tooltip>
+								<TooltipContent>Add Files & Images</TooltipContent>
+								<TooltipTrigger>
+									<VSCodeButton
+										appearance="icon"
+										aria-label="Add Files & Images"
+										className="p-0 m-0 flex items-center"
+										data-testid="files-button"
+										disabled={shouldDisableFilesAndImages}
+										onClick={() => {
+											if (!shouldDisableFilesAndImages) {
+												onSelectFilesAndImages()
+											}
 										}}>
-										<ApiOptions
-											apiErrorMessage={undefined}
-											currentMode={mode}
-											isPopup={true}
-											modelIdErrorMessage={undefined}
-											showModelOptions={true}
-										/>
-									</ModelSelectorTooltip>
-								)}
+										<ButtonContainer>
+											<PlusIcon size={13} />
+										</ButtonContainer>
+									</VSCodeButton>
+								</TooltipTrigger>
+							</Tooltip>
+
+							<ServersToggleModal />
+
+							<ClineRulesToggleModal />
+
+							<ModelContainer ref={modelSelectorRef}>
+								<ModelPickerModal
+									currentMode={mode}
+									isOpen={showModelSelector}
+									onOpenChange={setShowModelSelector}>
+									<ModelButtonWrapper ref={buttonRef}>
+										<ModelDisplayButton
+											disabled={false}
+											isActive={showModelSelector}
+											onClick={handleModelButtonClick}
+											role="button"
+											tabIndex={0}
+											title="Select Model / API Provider">
+											<ModelButtonContent className="text-xs">{modelDisplayName}</ModelButtonContent>
+										</ModelDisplayButton>
+									</ModelButtonWrapper>
+								</ModelPickerModal>
 							</ModelContainer>
 						</ButtonGroup>
 					</div>
 					{/* Tooltip for Plan/Act toggle remains outside the conditional rendering */}
-					<Tooltip
-						hintText={t("chat.toggleModeHint", { metaKey: metaKeyChar })}
-						style={{ zIndex: 1000 }}
-						tipText={`${shownTooltipMode === "act" ? t("chat.actModeTooltip") : t("chat.planModeTooltip")}`}
-						visible={shownTooltipMode !== null}>
-						<SwitchContainer data-testid="mode-switch" disabled={false} onClick={onModeToggle}>
-							<Slider isAct={mode === "act"} isPlan={mode === "plan"} />
-							<SwitchOption
-								aria-checked={mode === "plan"}
-								isActive={mode === "plan"}
-								onMouseLeave={() => setShownTooltipMode(null)}
-								onMouseOver={() => setShownTooltipMode("plan")}
-								role="switch">
-								{t("chat.planMode")}
-							</SwitchOption>
-							<SwitchOption
-								aria-checked={mode === "act"}
-								isActive={mode === "act"}
-								onMouseLeave={() => setShownTooltipMode(null)}
-								onMouseOver={() => setShownTooltipMode("act")}
-								role="switch">
-								{t("chat.actMode")}
-							</SwitchOption>
-						</SwitchContainer>
+					<Tooltip>
+						<TooltipContent
+							className="text-xs px-2 flex flex-col gap-1"
+							hidden={shownTooltipMode === null}
+							side="top">
+							{`In ${shownTooltipMode === "act" ? "Act" : "Plan"}  mode, Codee will ${shownTooltipMode === "act" ? "complete the task immediately" : "gather information to architect a plan"}`}
+							<p className="text-description/80 text-xs mb-0">
+								Toggle w/ <kbd className="text-muted-foreground mx-1">{togglePlanActKeys}</kbd>
+							</p>
+						</TooltipContent>
+						<TooltipTrigger>
+							<SwitchContainer data-testid="mode-switch" disabled={false} onClick={onModeToggle}>
+								<Slider isAct={mode === "act"} isPlan={mode === "plan"} />
+								{["Plan", "Act"].map((m) => (
+									<div
+										aria-checked={mode === m.toLowerCase()}
+										className={cn(
+											"pt-0.5 pb-px px-2 z-10 text-xs w-1/2 text-center bg-transparent",
+											mode === m.toLowerCase() ? "text-white" : "text-input-foreground",
+										)}
+										onMouseLeave={() => setShownTooltipMode(null)}
+										onMouseOver={() => setShownTooltipMode(m.toLowerCase() === "plan" ? "plan" : "act")}
+										role="switch">
+										{m}
+									</div>
+								))}
+							</SwitchContainer>
+						</TooltipTrigger>
 					</Tooltip>
-				</ControlsContainer>
+				</div>
 			</div>
 		)
 	},

@@ -1,9 +1,10 @@
-import { Anthropic } from "@anthropic-ai/sdk"
 import { ModelInfo, openAiModelInfoSaneDefaults } from "@shared/api"
 import { SELECTOR_SEPARATOR, stringifyVsCodeLmModelSelector } from "@shared/vsCodeSelectorUtils"
 import { calculateApiCostAnthropic } from "@utils/cost"
 import * as vscode from "vscode"
-import { ApiHandler, SingleCompletionHandler, CommonApiHandlerOptions } from "../"
+import { ClineStorageMessage } from "@/shared/messages/content"
+import { Logger } from "@/shared/services/Logger"
+import { ApiHandler, CommonApiHandlerOptions, SingleCompletionHandler } from "../"
 import { withRetry } from "../retry"
 import { ApiStream } from "../transform/stream"
 import { convertToVsCodeLmMessages } from "../transform/vscode-lm-format"
@@ -123,7 +124,7 @@ declare module "vscode" {
  * const systemPrompt = "You are a helpful assistant";
  * const messages = [{ role: "user", content: "Hello!" }];
  * for await (const chunk of handler.createMessage(systemPrompt, messages)) {
- *   console.log(chunk);
+ *   Logger.log(chunk);
  * }
  * ```
  */
@@ -147,7 +148,7 @@ export class VsCodeLmHandler implements ApiHandler, SingleCompletionHandler {
 						this.client = null
 						this.ensureCleanState()
 					} catch (error) {
-						console.error("Error during configuration change cleanup:", error)
+						Logger.error("Error during configuration change cleanup:", error)
 					}
 				}
 			})
@@ -156,7 +157,7 @@ export class VsCodeLmHandler implements ApiHandler, SingleCompletionHandler {
 			this.dispose()
 
 			throw new Error(
-				`Cline <Language Model API>: Failed to initialize handler: ${error instanceof Error ? error.message : "Unknown error"}`,
+				`Codee <Language Model API>: Failed to initialize handler: ${error instanceof Error ? error.message : "Unknown error"}`,
 			)
 		}
 	}
@@ -279,7 +280,7 @@ export class VsCodeLmHandler implements ApiHandler, SingleCompletionHandler {
 
 	private async getClient(): Promise<vscode.LanguageModelChat> {
 		if (!this.client) {
-			console.debug("Codee <Language Model API>: Getting client with options:", {
+			Logger.debug("Codee <Language Model API>: Getting client with options:", {
 				vsCodeLmModelSelector: this.options.vsCodeLmModelSelector,
 				hasOptions: !!this.options,
 				selectorKeys: this.options.vsCodeLmModelSelector ? Object.keys(this.options.vsCodeLmModelSelector) : [],
@@ -288,11 +289,11 @@ export class VsCodeLmHandler implements ApiHandler, SingleCompletionHandler {
 			try {
 				// Use default empty selector if none provided to get all available models
 				const selector = this.options?.vsCodeLmModelSelector || {}
-				console.debug("Codee <Language Model API>: Creating client with selector:", selector)
+				Logger.debug("Codee <Language Model API>: Creating client with selector:", selector)
 				this.client = await this.createClient(selector)
 			} catch (error) {
 				const message = error instanceof Error ? error.message : "Unknown error"
-				console.error("Codee <Language Model API>: Client creation failed:", message)
+				Logger.error("Codee <Language Model API>: Client creation failed:", message)
 				throw new Error(`Codee <Language Model API>: Failed to create client: ${message}`)
 			}
 		}
@@ -366,7 +367,7 @@ export class VsCodeLmHandler implements ApiHandler, SingleCompletionHandler {
 	}
 
 	@withRetry()
-	async *createMessage(systemPrompt: string, messages: Anthropic.Messages.MessageParam[]): ApiStream {
+	async *createMessage(systemPrompt: string, messages: ClineStorageMessage[]): ApiStream {
 		// Ensure clean state before starting a new request
 		this.ensureCleanState()
 		const client: vscode.LanguageModelChat = await this.getClient()
@@ -396,7 +397,7 @@ export class VsCodeLmHandler implements ApiHandler, SingleCompletionHandler {
 		try {
 			// Create the response stream with minimal required options
 			const requestOptions: vscode.LanguageModelChatRequestOptions = {
-				justification: `Cline would like to use '${client.name}' from '${client.vendor}', Click 'Allow' to proceed.`,
+				justification: `Codee would like to use '${client.name}' from '${client.vendor}', Click 'Allow' to proceed.`,
 			}
 
 			// Note: Tool support is currently provided by the VSCode Language Model API directly
@@ -413,7 +414,7 @@ export class VsCodeLmHandler implements ApiHandler, SingleCompletionHandler {
 				if (chunk instanceof vscode.LanguageModelTextPart) {
 					// Validate text part value
 					if (typeof chunk.value !== "string") {
-						console.warn("Codee <Language Model API>: Invalid text part value received:", chunk.value)
+						Logger.warn("Codee <Language Model API>: Invalid text part value received:", chunk.value)
 						continue
 					}
 
@@ -426,18 +427,18 @@ export class VsCodeLmHandler implements ApiHandler, SingleCompletionHandler {
 					try {
 						// Validate tool call parameters
 						if (!chunk.name || typeof chunk.name !== "string") {
-							console.warn("Codee <Language Model API>: Invalid tool name received:", chunk.name)
+							Logger.warn("Codee <Language Model API>: Invalid tool name received:", chunk.name)
 							continue
 						}
 
 						if (!chunk.callId || typeof chunk.callId !== "string") {
-							console.warn("Codee <Language Model API>: Invalid tool callId received:", chunk.callId)
+							Logger.warn("Codee <Language Model API>: Invalid tool callId received:", chunk.callId)
 							continue
 						}
 
 						// Ensure input is a valid object
 						if (!chunk.input || typeof chunk.input !== "object") {
-							console.warn("Codee <Language Model API>: Invalid tool input received:", chunk.input)
+							Logger.warn("Codee <Language Model API>: Invalid tool input received:", chunk.input)
 							continue
 						}
 
@@ -453,7 +454,7 @@ export class VsCodeLmHandler implements ApiHandler, SingleCompletionHandler {
 						accumulatedText += toolCallText
 
 						// Log tool call for debugging
-						console.debug("Codee <Language Model API>: Processing tool call:", {
+						Logger.debug("Codee <Language Model API>: Processing tool call:", {
 							name: chunk.name,
 							callId: chunk.callId,
 							inputSize: JSON.stringify(chunk.input).length,
@@ -464,10 +465,10 @@ export class VsCodeLmHandler implements ApiHandler, SingleCompletionHandler {
 							text: toolCallText,
 						}
 					} catch (error) {
-						console.error("Codee <Language Model API>: Failed to process tool call:", error)
+						Logger.error("Codee <Language Model API>: Failed to process tool call:", error)
 					}
 				} else {
-					console.warn("Codee <Language Model API>: Unknown chunk type received:", chunk)
+					Logger.warn("Codee <Language Model API>: Unknown chunk type received:", chunk)
 				}
 			}
 
@@ -489,7 +490,7 @@ export class VsCodeLmHandler implements ApiHandler, SingleCompletionHandler {
 			}
 
 			if (error instanceof Error) {
-				console.error("Codee <Language Model API>: Stream error details:", {
+				Logger.error("Codee <Language Model API>: Stream error details:", {
 					message: error.message,
 					stack: error.stack,
 					name: error.name,
@@ -500,12 +501,12 @@ export class VsCodeLmHandler implements ApiHandler, SingleCompletionHandler {
 			} else if (typeof error === "object" && error !== null) {
 				// Handle error-like objects
 				const errorDetails = JSON.stringify(error, null, 2)
-				console.error("Codee <Language Model API>: Stream error object:", errorDetails)
+				Logger.error("Codee <Language Model API>: Stream error object:", errorDetails)
 				throw new Error(`Codee <Language Model API>: Response stream error: ${errorDetails}`)
 			} else {
 				// Fallback for unknown error types
 				const errorMessage = String(error)
-				console.error("Codee <Language Model API>: Unknown stream error:", errorMessage)
+				Logger.error("Codee <Language Model API>: Unknown stream error:", errorMessage)
 				throw new Error(`Codee <Language Model API>: Response stream error: ${errorMessage}`)
 			}
 		}
@@ -526,7 +527,7 @@ export class VsCodeLmHandler implements ApiHandler, SingleCompletionHandler {
 			// Log any missing properties for debugging
 			for (const [prop, value] of Object.entries(requiredProps)) {
 				if (!value && value !== 0) {
-					console.warn(`Codee <Language Model API>: Client missing ${prop} property`)
+					Logger.warn(`Codee <Language Model API>: Client missing ${prop} property`)
 				}
 			}
 
@@ -557,7 +558,7 @@ export class VsCodeLmHandler implements ApiHandler, SingleCompletionHandler {
 			? stringifyVsCodeLmModelSelector(this.options.vsCodeLmModelSelector)
 			: "vscode-lm"
 
-		console.debug("Codee <Language Model API>: No client available, using fallback model info")
+		Logger.debug("Codee <Language Model API>: No client available, using fallback model info")
 
 		return {
 			id: fallbackId,

@@ -1,13 +1,21 @@
 import { Anthropic } from "@anthropic-ai/sdk"
 import {
-	type ContentBlock as BedrockContentBlock,
-	ConversationRole as BedrockConversationRole,
-	type Message as BedrockMessage,
+    type ContentBlock as BedrockContentBlock,
+    ConversationRole as BedrockConversationRole,
+    type Message as BedrockMessage,
 } from "@aws-sdk/client-bedrock-runtime"
+import { ChatMessage, OrchestrationClient, OrchestrationModuleConfig } from "@sap-ai-sdk/orchestration"
+import { HttpDestination, transformServiceBindingToDestination } from "@sap-cloud-sdk/connectivity"
 import { ModelInfo, SapAiCoreModelId, sapAiCoreDefaultModelId, sapAiCoreModels } from "@shared/api"
 import axios from "axios"
+import JSON5 from "json5"
 import OpenAI from "openai"
+import { buildExternalBasicHeaders } from "@/services/EnvUtils"
+import { ClineStorageMessage } from "@/shared/messages/content"
+import { getAxiosSettings } from "@/shared/net"
+import { Logger } from "@/shared/services/Logger"
 import { ApiHandler, CommonApiHandlerOptions } from "../"
+import { withRetry } from "../retry"
 import { convertToOpenAiMessages } from "../transform/openai-format"
 import { ApiStream } from "../transform/stream"
 
@@ -18,7 +26,9 @@ interface SapAiCoreHandlerOptions extends CommonApiHandlerOptions {
 	sapAiResourceGroup?: string
 	sapAiCoreBaseUrl?: string
 	apiModelId?: string
+	sapAiCoreUseOrchestrationMode?: boolean
 	thinkingBudgetTokens?: number
+	deploymentId?: string
 	reasoningEffort?: string
 }
 
@@ -26,6 +36,7 @@ interface Deployment {
 	id: string
 	name: string
 }
+
 interface Token {
 	access_token: string
 	expires_in: number
@@ -109,7 +120,7 @@ namespace Bedrock {
 	 * Formats messages for models using the Converse API specification
 	 * Used by both Anthropic and Nova models to avoid code duplication
 	 */
-	export function formatMessagesForConverseAPI(messages: Anthropic.Messages.MessageParam[]): BedrockMessage[] {
+	export function formatMessagesForConverseAPI(messages: ClineStorageMessage[]): BedrockMessage[] {
 		return messages.map((message) => {
 			// Determine role (user or assistant)
 			const role = message.role === "user" ? BedrockConversationRole.USER : BedrockConversationRole.ASSISTANT
@@ -135,7 +146,7 @@ namespace Bedrock {
 						}
 
 						// Log unsupported content types for debugging
-						console.warn(`Unsupported content type: ${(item as ContentItem).type}`)
+						Logger.warn(`Unsupported content type: ${(item as ContentItem).type}`)
 						return null
 					})
 					.filter((item): item is BedrockContentBlock => item !== null)
@@ -204,7 +215,7 @@ namespace Bedrock {
 				},
 			}
 		} catch (error) {
-			console.error("Failed to process image content:", error)
+			Logger.error("Failed to process image content:", error)
 			// Return a text content indicating the error instead of null
 			// This ensures users are aware of the issue
 			return {
@@ -305,13 +316,12 @@ namespace Gemini {
 	}
 
 	/**
-	 * Prepare Gemini request payload with thinking configuration and implicit caching support
+	 * Prepare Gemini request payload with implicit caching support
 	 */
 	export function prepareRequestPayload(
 		systemPrompt: string,
-		messages: Anthropic.Messages.MessageParam[],
+		messages: ClineStorageMessage[],
 		model: { id: SapAiCoreModelId; info: ModelInfo },
-		thinkingBudgetTokens?: number,
 	): any {
 		const contents = messages.map(convertAnthropicMessageToGemini)
 
@@ -330,17 +340,15 @@ namespace Gemini {
 			},
 		}
 
-		// Add thinking config if the model supports it and budget is provided
-		const thinkingBudget = thinkingBudgetTokens ?? 0
-		const _maxBudget = model.info.thinkingConfig?.maxBudget ?? 0
-
-		if (thinkingBudget > 0 && model.info.thinkingConfig) {
-			// Add thinking configuration to the payload
-			;(payload as any).thinkingConfig = {
-				thinkingBudget: thinkingBudget,
-				includeThoughts: true,
-			}
-		}
+		// Note: SAP AI Core's Gemini deployment doesn't support thinkingConfig yet
+		// Commenting out until support is added
+		// const thinkingBudget = thinkingBudgetTokens ?? 0
+		// if (thinkingBudget > 0 && model.info.thinkingConfig) {
+		// 	;(payload as any).thinkingConfig = {
+		// 		thinkingBudget: thinkingBudget,
+		// 		includeThoughts: true,
+		// 	}
+		// }
 
 		return payload
 	}
@@ -350,21 +358,81 @@ export class SapAiCoreHandler implements ApiHandler {
 	private options: SapAiCoreHandlerOptions
 	private token?: Token
 	private deployments?: Deployment[]
+	private aiCoreDestination?: HttpDestination
+	private destinationExpiresAt?: number
 
 	constructor(options: SapAiCoreHandlerOptions) {
 		this.options = options
 	}
 
+	/**
+	 * Converts a chunk from the stream to a UTF-8 string
+	 * Handles Buffer, string, and byte array formats
+	 */
+	private chunkToString(chunk: any): string {
+		if (Buffer.isBuffer(chunk)) {
+			return chunk.toString("utf-8")
+		} else if (typeof chunk === "string") {
+			return chunk
+		} else {
+			// Handle comma-separated byte values or other array-like formats
+			return Buffer.from(chunk).toString("utf-8")
+		}
+	}
+
+	private validateCredentials(): void {
+		if (
+			!this.options.sapAiCoreClientId ||
+			!this.options.sapAiCoreClientSecret ||
+			!this.options.sapAiCoreTokenUrl ||
+			!this.options.sapAiCoreBaseUrl
+		) {
+			throw new Error("Missing required SAP AI Core credentials. Please check your configuration.")
+		}
+	}
+
+	private async createAiCoreDestination(): Promise<HttpDestination> {
+		try {
+			const aiCoreServiceCredentials = {
+				clientid: this.options.sapAiCoreClientId!,
+				clientsecret: this.options.sapAiCoreClientSecret!,
+				url: this.options.sapAiCoreTokenUrl!,
+				serviceurls: {
+					AI_API_URL: this.options.sapAiCoreBaseUrl!,
+				},
+			}
+
+			const destination = await transformServiceBindingToDestination({
+				credentials: aiCoreServiceCredentials,
+				name: "aicore",
+				label: "aicore",
+				tags: ["aicore"],
+			})
+
+			return {
+				...destination,
+				url: destination.url || this.options.sapAiCoreBaseUrl!,
+			}
+		} catch (error) {
+			Logger.error("Failed to create AI Core destination:", error)
+			throw new Error(`Unable to create AI Core destination: ${error instanceof Error ? error.message : String(error)}`)
+		}
+	}
+
 	private async authenticate(): Promise<Token> {
+		this.validateCredentials()
+
 		const payload = {
 			grant_type: "client_credentials",
-			client_id: this.options.sapAiCoreClientId || "",
-			client_secret: this.options.sapAiCoreClientSecret || "",
+			client_id: this.options.sapAiCoreClientId,
+			client_secret: this.options.sapAiCoreClientSecret,
 		}
 
-		const tokenUrl = (this.options.sapAiCoreTokenUrl || "").replace(/\/+$/, "") + "/oauth/token"
+		const externalHeaders = buildExternalBasicHeaders()
+		const tokenUrl = this.options.sapAiCoreTokenUrl!.replace(/\/+$/, "") + "/oauth/token"
 		const response = await axios.post(tokenUrl, payload, {
-			headers: { "Content-Type": "application/x-www-form-urlencoded" },
+			headers: { ...externalHeaders, "Content-Type": "application/x-www-form-urlencoded" },
+			...getAxiosSettings(),
 		})
 		const token = response.data as Token
 		token.expires_at = Date.now() + token.expires_in * 1000
@@ -378,23 +446,22 @@ export class SapAiCoreHandler implements ApiHandler {
 		return this.token.access_token
 	}
 
+	// TODO: these fallback fetching deployment id methods can be removed in future version if decided that users migration to fetching deployment id in design-time (open SAP AI Core provider UI) considered as completed.
 	private async getAiCoreDeployments(): Promise<Deployment[]> {
-		if (this.options.sapAiCoreClientSecret === "") {
-			return [{ id: "notconfigured", name: "ai-core-not-configured" }]
-		}
-
 		const token = await this.getToken()
+		const externalHeaders = buildExternalBasicHeaders()
 		const headers = {
+			...externalHeaders,
 			Authorization: `Bearer ${token}`,
 			"AI-Resource-Group": this.options.sapAiResourceGroup || "default",
 			"Content-Type": "application/json",
-			"AI-Client-Type": "Cline",
+			"AI-Client-Type": "Codee",
 		}
 
 		const url = `${this.options.sapAiCoreBaseUrl}/v2/lm/deployments?$top=10000&$skip=0`
 
 		try {
-			const response = await axios.get(url, { headers })
+			const response = await axios.get(url, { headers, ...getAxiosSettings() })
 			const deployments = response.data.resources
 
 			return deployments
@@ -411,7 +478,7 @@ export class SapAiCoreHandler implements ApiHandler {
 				})
 				.filter((deployment: any) => deployment !== null)
 		} catch (error) {
-			console.error("Error fetching deployments:", error)
+			Logger.error("Error fetching deployments:", error)
 			throw new Error("Failed to fetch deployments")
 		}
 	}
@@ -439,19 +506,111 @@ export class SapAiCoreHandler implements ApiHandler {
 		return this.deployments?.some((d) => d.name.split(":")[0].toLowerCase() === modelId.split(":")[0].toLowerCase()) ?? false
 	}
 
-	async *createMessage(systemPrompt: string, messages: Anthropic.Messages.MessageParam[]): ApiStream {
+	@withRetry()
+	async *createMessage(systemPrompt: string, messages: ClineStorageMessage[]): ApiStream {
+		if (this.options.sapAiCoreUseOrchestrationMode) {
+			yield* this.createMessageWithOrchestration(systemPrompt, messages)
+		} else {
+			yield* this.createMessageWithDeployments(systemPrompt, messages)
+		}
+	}
+
+	// TODO: support credentials changes after initial setup
+	private async ensureAiCoreEnvSetup() {
+		if (!this.aiCoreDestination || !this.destinationExpiresAt || this.destinationExpiresAt < Date.now()) {
+			this.validateCredentials()
+			this.aiCoreDestination = await this.createAiCoreDestination()
+
+			// Extract expiration from the destination's auth token
+			const expiresIn = this.aiCoreDestination.authTokens?.[0]?.expiresIn
+			if (!expiresIn) {
+				throw new Error("Destination is missing required authTokens with expiresIn")
+			}
+			this.destinationExpiresAt = Date.now() + parseInt(expiresIn, 10) * 1000
+		}
+	}
+
+	private async *createMessageWithOrchestration(systemPrompt: string, messages: ClineStorageMessage[]): ApiStream {
+		try {
+			await this.ensureAiCoreEnvSetup()
+			const model = this.getModel()
+
+			const orchestrationConfig: OrchestrationModuleConfig = {
+				promptTemplating: {
+					model: {
+						name: model.id,
+					},
+					prompt: {
+						template: [
+							{
+								role: "system",
+								content: systemPrompt,
+							},
+						],
+					},
+				},
+			}
+
+			const orchestrationClient = new OrchestrationClient(
+				orchestrationConfig,
+				{
+					resourceGroup: this.options.sapAiResourceGroup || "default",
+				},
+				this.aiCoreDestination,
+			)
+
+			const sapMessages = this.convertMessageParamToSAPMessages(messages)
+
+			// messagesHistory: Contains the conversation context (user/assistant messages).
+			// Unlike the `messages` field that validates input, this does not validate
+			// template placeholders such as {{?userResponse}}, allowing content to be
+			// sent directly to the LLM with the Cline system prompt without validation errors.
+			const response = await orchestrationClient.stream({
+				messagesHistory: sapMessages,
+			})
+
+			for await (const chunk of response.stream.toContentStream()) {
+				yield { type: "text", text: chunk }
+			}
+
+			const tokenUsage = response.getTokenUsage()
+			if (tokenUsage) {
+				yield {
+					type: "usage",
+					inputTokens: tokenUsage.prompt_tokens || 0,
+					outputTokens: tokenUsage.completion_tokens || 0,
+				}
+			}
+		} catch (error) {
+			Logger.error("Error in SAP orchestration mode:", error)
+			throw error
+		}
+	}
+
+	private async *createMessageWithDeployments(systemPrompt: string, messages: ClineStorageMessage[]): ApiStream {
 		const token = await this.getToken()
+		const externalHeaders = buildExternalBasicHeaders()
 		const headers = {
+			...externalHeaders,
 			Authorization: `Bearer ${token}`,
 			"AI-Resource-Group": this.options.sapAiResourceGroup || "default",
 			"Content-Type": "application/json",
-			"AI-Client-Type": "Cline",
+			"AI-Client-Type": "Codee",
 		}
 
 		const model = this.getModel()
-		const deploymentId = await this.getDeploymentForModel(model.id)
+		let deploymentId = this.options.deploymentId
+
+		if (!deploymentId) {
+			// Fallback to runtime deployment id fetching for users who haven't opened the SAP provider UI
+			Logger.log(`No pre-configured deployment ID found for model ${model.id}, falling back to runtime fetching`)
+			deploymentId = await this.getDeploymentForModel(model.id)
+		}
 
 		const anthropicModels = [
+			"anthropic--claude-4.5-haiku",
+			"anthropic--claude-4.5-opus",
+			"anthropic--claude-4.5-sonnet",
 			"anthropic--claude-4-sonnet",
 			"anthropic--claude-4-opus",
 			"anthropic--claude-3.7-sonnet",
@@ -476,6 +635,7 @@ export class SapAiCoreHandler implements ApiHandler {
 			"o4-mini",
 		]
 
+		const perplexityModels = ["sonar-pro", "sonar"]
 		const geminiModels = ["gemini-2.5-flash", "gemini-2.5-pro"]
 
 		let url: string
@@ -488,14 +648,19 @@ export class SapAiCoreHandler implements ApiHandler {
 			const formattedMessages = Bedrock.formatMessagesForConverseAPI(messages)
 
 			// Get message indices for caching
-			const userMsgIndices = messages.reduce(
-				(acc, msg, index) => (msg.role === "user" ? [...acc, index] : acc),
-				[] as number[],
-			)
+			const userMsgIndices = messages.reduce((acc, msg, index) => {
+				if (msg.role === "user") {
+					acc.push(index)
+				}
+				return acc
+			}, [] as number[])
 			const lastUserMsgIndex = userMsgIndices[userMsgIndices.length - 1] ?? -1
 			const secondLastMsgUserIndex = userMsgIndices[userMsgIndices.length - 2] ?? -1
 
 			if (
+				model.id === "anthropic--claude-4.5-opus" ||
+				model.id === "anthropic--claude-4.5-sonnet" ||
+				model.id === "anthropic--claude-4.5-haiku" ||
 				model.id === "anthropic--claude-4-sonnet" ||
 				model.id === "anthropic--claude-4-opus" ||
 				model.id === "anthropic--claude-3.7-sonnet"
@@ -563,9 +728,26 @@ export class SapAiCoreHandler implements ApiHandler {
 				delete payload.stream
 				delete payload.stream_options
 			}
+		} else if (perplexityModels.includes(model.id)) {
+			const openAiMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [
+				{ role: "system", content: systemPrompt },
+				...convertToOpenAiMessages(messages),
+			]
+
+			url = `${this.options.sapAiCoreBaseUrl}/v2/inference/deployments/${deploymentId}/chat/completions`
+			payload = {
+				stream: true,
+				messages: openAiMessages,
+				temperature: 0.0,
+				frequency_penalty: 0,
+				presence_penalty: 0,
+				stop: null,
+				model: model.id,
+				stream_options: { include_usage: true },
+			}
 		} else if (geminiModels.includes(model.id)) {
 			url = `${this.options.sapAiCoreBaseUrl}/v2/inference/deployments/${deploymentId}/models/${model.id}:streamGenerateContent`
-			payload = Gemini.prepareRequestPayload(systemPrompt, messages, model, this.options.thinkingBudgetTokens)
+			payload = Gemini.prepareRequestPayload(systemPrompt, messages, model)
 		} else {
 			throw new Error(`Unsupported model: ${model.id}`)
 		}
@@ -574,10 +756,11 @@ export class SapAiCoreHandler implements ApiHandler {
 			const response = await axios.post(url, JSON.stringify(payload, null, 2), {
 				headers,
 				responseType: "stream",
+				...getAxiosSettings(),
 			})
 
 			if (model.id === "o3-mini") {
-				const response = await axios.post(url, JSON.stringify(payload, null, 2), { headers })
+				const response = await axios.post(url, JSON.stringify(payload, null, 2), { headers, ...getAxiosSettings() })
 
 				// Yield the usage information
 				if (response.data.usage) {
@@ -604,9 +787,12 @@ export class SapAiCoreHandler implements ApiHandler {
 						outputTokens: response.data.usage.completion_tokens,
 					}
 				}
-			} else if (openAIModels.includes(model.id)) {
+			} else if (openAIModels.includes(model.id) || perplexityModels.includes(model.id)) {
 				yield* this.streamCompletionGPT(response.data, model)
 			} else if (
+				model.id === "anthropic--claude-4.5-opus" ||
+				model.id === "anthropic--claude-4.5-sonnet" ||
+				model.id === "anthropic--claude-4.5-haiku" ||
 				model.id === "anthropic--claude-4-sonnet" ||
 				model.id === "anthropic--claude-4-opus" ||
 				model.id === "anthropic--claude-3.7-sonnet"
@@ -617,29 +803,63 @@ export class SapAiCoreHandler implements ApiHandler {
 			} else {
 				yield* this.streamCompletion(response.data, model)
 			}
-		} catch (error) {
+		} catch (error: any) {
 			if (error.response) {
 				// The request was made and the server responded with a status code
 				// that falls out of the range of 2xx
-				console.error("Error status:", error.response.status)
-				console.error("Error data:", error.response.data)
-				console.error("Error headers:", error.response.headers)
+				Logger.error("Error status:", error.response.status)
+				Logger.error("Error headers:", error.response.headers)
+
+				// Handle error data - need to read stream if responseType was 'stream'
+				let errorMessage = "Unknown error"
+				if (error.response.data) {
+					try {
+						// If it's a stream, read it
+						if (
+							typeof error.response.data.on === "function" ||
+							typeof error.response.data[Symbol.asyncIterator] === "function"
+						) {
+							const chunks: Buffer[] = []
+							for await (const chunk of error.response.data) {
+								chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
+							}
+							const fullData = Buffer.concat(chunks).toString("utf-8")
+							errorMessage = fullData
+							try {
+								// Try to parse as JSON for better formatting
+								const jsonError = JSON.parse(fullData)
+								errorMessage = JSON.stringify(jsonError, null, 2)
+							} catch {
+								// Keep as plain text if not JSON
+							}
+						} else if (typeof error.response.data === "string") {
+							errorMessage = error.response.data
+						} else if (typeof error.response.data === "object") {
+							errorMessage = JSON.stringify(error.response.data, null, 2)
+						}
+						Logger.error("Error data:", errorMessage)
+					} catch (e) {
+						Logger.error("Failed to read error data:", e)
+						Logger.error("Raw error data:", error.response.data)
+					}
+				}
 
 				if (error.response.status === 404) {
-					console.error("404 Error reason:", error.response.data)
-					throw new Error(`404 Not Found: ${error.response.data}`)
+					throw new Error(`404 Not Found: ${errorMessage}`)
+				} else if (error.response.status === 400) {
+					throw new Error(`400 Bad Request: ${errorMessage}`)
 				}
+
+				throw new Error(`HTTP ${error.response.status}: ${errorMessage}`)
 			} else if (error.request) {
 				// The request was made but no response was received
-				console.error("Error request:", error.request)
+				Logger.error("Error request:", error.request)
 				throw new Error("No response received from server")
 			} else {
 				// Something happened in setting up the request that triggered an Error
-				console.error("Error message:", error.message)
+				Logger.error("Error message:", error.message)
 				throw new Error(`Error setting up request: ${error.message}`)
 			}
-
-			throw new Error("Failed to create message")
 		}
 	}
 
@@ -651,7 +871,8 @@ export class SapAiCoreHandler implements ApiHandler {
 
 		try {
 			for await (const chunk of stream) {
-				const lines = chunk.toString().split("\n").filter(Boolean)
+				const chunkStr = this.chunkToString(chunk)
+				const lines = chunkStr.split("\n").filter(Boolean)
 				for (const line of lines) {
 					if (line.startsWith("data: ")) {
 						const jsonData = line.slice(6)
@@ -684,13 +905,13 @@ export class SapAiCoreHandler implements ApiHandler {
 								}
 							}
 						} catch (error) {
-							console.error("Failed to parse JSON data:", error)
+							Logger.error("Failed to parse JSON data:", error)
 						}
 					}
 				}
 			}
 		} catch (error) {
-			console.error("Error streaming completion:", error)
+			Logger.error("Error streaming completion:", error)
 			throw error
 		}
 	}
@@ -699,18 +920,13 @@ export class SapAiCoreHandler implements ApiHandler {
 		stream: any,
 		_model: { id: SapAiCoreModelId; info: ModelInfo },
 	): AsyncGenerator<any, void, unknown> {
-		function toStrictJson(str: string): string {
-			// Wrap it in parentheses so JS will treat it as an expression
-			const obj = new Function("return " + str)()
-			return JSON.stringify(obj)
-		}
-
 		const _usage = { input_tokens: 0, output_tokens: 0 }
 
 		try {
 			// Iterate over the stream and process each chunk
 			for await (const chunk of stream) {
-				const lines = chunk.toString().split("\n").filter(Boolean)
+				const chunkStr = this.chunkToString(chunk)
+				const lines = chunkStr.split("\n").filter(Boolean)
 
 				for (const line of lines) {
 					if (line.startsWith("data: ")) {
@@ -718,20 +934,18 @@ export class SapAiCoreHandler implements ApiHandler {
 
 						try {
 							// Parse the incoming JSON data from the stream
-							const data = JSON.parse(toStrictJson(jsonData))
+							// Using JSON5 to handle relaxed JSON syntax (e.g., single quotes)
+							const data = JSON5.parse(jsonData)
 
 							// Handle metadata (token usage)
 							if (data.metadata?.usage) {
+								// inputTokens does not include cached write/read tokens
 								let inputTokens = data.metadata.usage.inputTokens || 0
 								const outputTokens = data.metadata.usage.outputTokens || 0
 
-								// calibrate input token
-								const totalTokens = data.metadata.usage.totalTokens || 0
 								const cacheReadInputTokens = data.metadata.usage.cacheReadInputTokens || 0
-								const cacheWriteOutputTokens = data.metadata.usage.cacheWriteOutputTokens || 0
-								if (inputTokens + outputTokens + cacheReadInputTokens + cacheWriteOutputTokens !== totalTokens) {
-									inputTokens = totalTokens - outputTokens - cacheReadInputTokens - cacheWriteOutputTokens
-								}
+								const cacheWriteInputTokens = data.metadata.usage.cacheWriteInputTokens || 0
+								inputTokens = inputTokens + cacheReadInputTokens + cacheWriteInputTokens
 
 								yield {
 									type: "usage",
@@ -758,7 +972,7 @@ export class SapAiCoreHandler implements ApiHandler {
 								}
 							}
 						} catch (error) {
-							console.error("Failed to parse JSON data:", error)
+							Logger.error("Failed to parse JSON data:", error)
 							yield {
 								type: "text",
 								text: `[ERROR] Failed to parse response data: ${error instanceof Error ? error.message : String(error)}`,
@@ -768,7 +982,7 @@ export class SapAiCoreHandler implements ApiHandler {
 				}
 			}
 		} catch (error) {
-			console.error("Error streaming completion:", error)
+			Logger.error("Error streaming completion:", error)
 			yield {
 				type: "text",
 				text: `[ERROR] Failed to process stream: ${error instanceof Error ? error.message : String(error)}`,
@@ -786,7 +1000,8 @@ export class SapAiCoreHandler implements ApiHandler {
 
 		try {
 			for await (const chunk of stream) {
-				const lines = chunk.toString().split("\n").filter(Boolean)
+				const chunkStr = this.chunkToString(chunk)
+				const lines = chunkStr.split("\n").filter(Boolean)
 				for (const line of lines) {
 					if (line.trim() === "data: [DONE]") {
 						// End of stream, yield final usage
@@ -836,13 +1051,13 @@ export class SapAiCoreHandler implements ApiHandler {
 								}
 							}
 						} catch (error) {
-							console.error("Failed to parse GPT JSON data:", error)
+							Logger.error("Failed to parse GPT JSON data:", error)
 						}
 					}
 				}
 			}
 		} catch (error) {
-			console.error("Error streaming GPT completion:", error)
+			Logger.error("Error streaming GPT completion:", error)
 			throw error
 		}
 	}
@@ -858,7 +1073,8 @@ export class SapAiCoreHandler implements ApiHandler {
 
 		try {
 			for await (const chunk of stream) {
-				const lines = chunk.toString().split("\n").filter(Boolean)
+				const chunkStr = this.chunkToString(chunk)
+				const lines = chunkStr.split("\n").filter(Boolean)
 				for (const line of lines) {
 					if (line.startsWith("data: ")) {
 						const jsonData = line.slice(6)
@@ -900,13 +1116,13 @@ export class SapAiCoreHandler implements ApiHandler {
 								}
 							}
 						} catch (error) {
-							console.error("Failed to parse Gemini JSON data:", error)
+							Logger.error("Failed to parse Gemini JSON data:", error)
 						}
 					}
 				}
 			}
 		} catch (error) {
-			console.error("Error streaming Gemini completion:", error)
+			Logger.error("Error streaming Gemini completion:", error)
 			throw error
 		}
 	}
@@ -933,5 +1149,9 @@ export class SapAiCoreHandler implements ApiHandler {
 			return { id, info: sapAiCoreModels[id] }
 		}
 		return { id: sapAiCoreDefaultModelId, info: sapAiCoreModels[sapAiCoreDefaultModelId] }
+	}
+	private convertMessageParamToSAPMessages(messages: ClineStorageMessage[]): ChatMessage[] {
+		// Use the existing OpenAI converter since the logic is identical
+		return convertToOpenAiMessages(messages) as ChatMessage[]
 	}
 }

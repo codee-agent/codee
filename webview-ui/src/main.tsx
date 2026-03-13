@@ -1,12 +1,11 @@
-import React from "react"
-import ReactDOM from "react-dom/client"
-import App from "./App"
-import "./i18n"
+import { StrictMode } from "react"
+import { createRoot } from "react-dom/client"
+import "./main.css"
 import "./index.css"
-import "../../node_modules/@vscode/codicons/dist/codicon.css"
+import App from "./App.tsx"
 
-ReactDOM.createRoot(document.getElementById("root")!).render(
-	<React.StrictMode>
+createRoot(document.getElementById("root")!).render(
+	<StrictMode>
 		<App />
-	</React.StrictMode>,
+	</StrictMode>,
 )

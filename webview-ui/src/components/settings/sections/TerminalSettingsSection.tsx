@@ -1,8 +1,10 @@
-import { StringRequest } from "@shared/proto/cline/common"
 import { UpdateTerminalConnectionTimeoutResponse } from "@shared/proto/index.cline"
 import { VSCodeCheckbox, VSCodeDropdown, VSCodeOption, VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 import React, { useState } from "react"
+import { useTranslation } from "react-i18next"
+import { PlatformType } from "@/config/platform.config"
 import { useExtensionState } from "@/context/ExtensionStateContext"
+import { usePlatform } from "@/context/PlatformContext"
 import { StateServiceClient } from "../../../services/grpc-client"
 import Section from "../Section"
 import TerminalOutputLineLimitSlider from "../TerminalOutputLineLimitSlider"
@@ -13,8 +15,16 @@ interface TerminalSettingsSectionProps {
 }
 
 export const TerminalSettingsSection: React.FC<TerminalSettingsSectionProps> = ({ renderSectionHeader }) => {
-	const { shellIntegrationTimeout, terminalReuseEnabled, defaultTerminalProfile, availableTerminalProfiles } =
-		useExtensionState()
+	const { t } = useTranslation()
+	const {
+		shellIntegrationTimeout,
+		terminalReuseEnabled,
+		defaultTerminalProfile,
+		availableTerminalProfiles,
+		vscodeTerminalExecutionMode,
+	} = useExtensionState()
+	const platformConfig = usePlatform()
+	const isVsCodePlatform = platformConfig.type === PlatformType.VSCODE
 
 	const [inputValue, setInputValue] = useState((shellIntegrationTimeout / 1000).toString())
 	const [inputError, setInputError] = useState<string | null>(null)
@@ -27,7 +37,7 @@ export const TerminalSettingsSection: React.FC<TerminalSettingsSectionProps> = (
 
 		const seconds = parseFloat(value)
 		if (Number.isNaN(seconds) || seconds <= 0) {
-			setInputError("Please enter a positive number")
+			setInputError(t("settings.terminal.positiveNumberError"))
 			return
 		}
 
@@ -61,17 +71,19 @@ export const TerminalSettingsSection: React.FC<TerminalSettingsSectionProps> = (
 		updateSetting("terminalReuseEnabled", checked)
 	}
 
+	const handleExecutionModeChange = (event: Event) => {
+		const target = event.target as HTMLSelectElement
+		const value = target.value === "backgroundExec" ? "backgroundExec" : "vscodeTerminal"
+		updateSetting("vscodeTerminalExecutionMode", value)
+	}
+
 	// Use any to avoid type conflicts between Event and FormEvent
 	const handleDefaultTerminalProfileChange = (event: any) => {
 		const target = event.target as HTMLSelectElement
 		const profileId = target.value
 
-		// Save immediately - the backend will call postStateToWebview() to update our state
-		StateServiceClient.updateDefaultTerminalProfile({
-			value: profileId || "default",
-		} as StringRequest).catch((error) => {
-			console.error("Failed to update default terminal profile:", error)
-		})
+		// Save immediately using the consolidated updateSettings approach
+		updateSetting("defaultTerminalProfile", profileId || "default")
 	}
 
 	const profilesToShow = availableTerminalProfiles
@@ -83,7 +95,7 @@ export const TerminalSettingsSection: React.FC<TerminalSettingsSectionProps> = (
 				<div className="mb-5" id="terminal-settings-section">
 					<div className="mb-4">
 						<label className="font-medium block mb-1" htmlFor="default-terminal-profile">
-							Default Terminal Profile
+							{t("settings.terminal.defaultProfile")}
 						</label>
 						<VSCodeDropdown
 							className="w-full"
@@ -96,29 +108,26 @@ export const TerminalSettingsSection: React.FC<TerminalSettingsSectionProps> = (
 								</VSCodeOption>
 							))}
 						</VSCodeDropdown>
-						<p className="text-xs text-[var(--vscode-descriptionForeground)] mt-1">
-							Select the default terminal Codee will use. 'Default' uses your VSCode global setting.
+						<p className="text-xs text-(--vscode-descriptionForeground) mt-1">
+							{t("settings.terminal.defaultProfileDesc")}
 						</p>
 					</div>
 
 					<div className="mb-4">
 						<div className="mb-2">
-							<label className="font-medium block mb-1">Shell integration timeout (seconds)</label>
+							<label className="font-medium block mb-1">{t("settings.terminal.shellTimeout")}</label>
 							<div className="flex items-center">
 								<VSCodeTextField
 									className="w-full"
 									onBlur={handleInputBlur}
 									onChange={(event) => handleTimeoutChange(event as Event)}
-									placeholder="Enter timeout in seconds"
+									placeholder={t("settings.terminal.enterTimeout")}
 									value={inputValue}
 								/>
 							</div>
-							{inputError && <div className="text-[var(--vscode-errorForeground)] text-xs mt-1">{inputError}</div>}
+							{inputError && <div className="text-(--vscode-errorForeground) text-xs mt-1">{inputError}</div>}
 						</div>
-						<p className="text-xs text-[var(--vscode-descriptionForeground)]">
-							Set how long Codee waits for shell integration to activate before executing commands. Increase this
-							value if you experience terminal connection timeouts.
-						</p>
+						<p className="text-xs text-(--vscode-descriptionForeground)">{t("settings.terminal.shellTimeoutDesc")}</p>
 					</div>
 
 					<div className="mb-4">
@@ -126,36 +135,30 @@ export const TerminalSettingsSection: React.FC<TerminalSettingsSectionProps> = (
 							<VSCodeCheckbox
 								checked={terminalReuseEnabled ?? true}
 								onChange={(event) => handleTerminalReuseChange(event as Event)}>
-								Enable aggressive terminal reuse
+								{t("settings.terminal.aggressiveReuse")}
 							</VSCodeCheckbox>
 						</div>
-						<p className="text-xs text-[var(--vscode-descriptionForeground)]">
-							When enabled, Codee will reuse existing terminal windows that aren't in the current working directory.
-							Disable this if you experience issues with task lockout after a terminal command.
-						</p>
+						<p className="text-xs text-(--vscode-descriptionForeground)">{t("settings.terminal.aggressiveReuseDesc")}</p>
 					</div>
+					{isVsCodePlatform && (
+						<div className="mb-4">
+							<label className="font-medium block mb-1" htmlFor="terminal-execution-mode">
+								{t("settings.terminal.executionMode")}
+							</label>
+							<VSCodeDropdown
+								className="w-full"
+								id="terminal-execution-mode"
+								onChange={(event) => handleExecutionModeChange(event as Event)}
+								value={vscodeTerminalExecutionMode ?? "vscodeTerminal"}>
+								<VSCodeOption value="vscodeTerminal">{t("settings.terminal.vscodeTerminal")}</VSCodeOption>
+								<VSCodeOption value="backgroundExec">{t("settings.terminal.backgroundExec")}</VSCodeOption>
+							</VSCodeDropdown>
+							<p className="text-xs text-[var(--vscode-descriptionForeground)] mt-1">
+								{t("settings.terminal.executionModeDesc")}
+							</p>
+						</div>
+					)}
 					<TerminalOutputLineLimitSlider />
-					<div className="mt-5 p-3 bg-[var(--vscode-textBlockQuote-background)] rounded border border-[var(--vscode-textBlockQuote-border)]">
-						<p className="text-[13px] m-0">
-							<strong>Having terminal issues?</strong> Check our{" "}
-							<a
-								className="text-[var(--vscode-textLink-foreground)] underline hover:no-underline"
-								href="https://docs.cline.bot/troubleshooting/terminal-quick-fixes"
-								rel="noopener noreferrer"
-								target="_blank">
-								Terminal Quick Fixes
-							</a>{" "}
-							or the{" "}
-							<a
-								className="text-[var(--vscode-textLink-foreground)] underline hover:no-underline"
-								href="https://docs.cline.bot/troubleshooting/terminal-integration-guide"
-								rel="noopener noreferrer"
-								target="_blank">
-								Complete Troubleshooting Guide
-							</a>
-							.
-						</p>
-					</div>
 				</div>
 			</Section>
 		</div>

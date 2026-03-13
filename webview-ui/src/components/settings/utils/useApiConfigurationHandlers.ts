@@ -25,6 +25,7 @@ export const useApiConfigurationHandlers = () => {
 		}
 
 		const protoConfig = convertApiConfigurationToProto(updatedConfig)
+		console.log('handleFieldChange', updatedConfig)
 		await ModelsServiceClient.updateApiConfigurationProto(
 			UpdateApiConfigurationRequest.create({
 				apiConfiguration: protoConfig,
@@ -48,6 +49,7 @@ export const useApiConfigurationHandlers = () => {
 		}
 
 		const protoConfig = convertApiConfigurationToProto(updatedConfig)
+		console.log('handleFieldsChange', updatedConfig, '  protoConfig', protoConfig)
 		await ModelsServiceClient.updateApiConfigurationProto(
 			UpdateApiConfigurationRequest.create({
 				apiConfiguration: protoConfig,
@@ -60,10 +62,13 @@ export const useApiConfigurationHandlers = () => {
 		value: ApiConfiguration[PlanK] & ApiConfiguration[ActK], // Intersection ensures value is compatible with both field types
 		currentMode: Mode,
 	) => {
+		console.log('handleModeFieldChange11', fieldPair)
 		if (planActSeparateModelsSetting) {
 			const targetField = fieldPair[currentMode]
+			console.log('handleModeFieldChange22', targetField, value)
 			await handleFieldChange(targetField, value)
 		} else {
+			console.log('handleModeFieldChange33', value)
 			await handleFieldsChange({
 				[fieldPair.plan]: value,
 				[fieldPair.act]: value,

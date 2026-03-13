@@ -1,7 +1,8 @@
+import { workspaceResolver } from "@core/workspace"
 import { openFile as openFileIntegration } from "@integrations/misc/open-file"
 import { Empty, StringRequest } from "@shared/proto/cline/common"
 import { getWorkspacePath } from "@utils/path"
-import * as path from "path"
+import { Logger } from "@/shared/services/Logger"
 import { Controller } from ".."
 
 /**
@@ -14,13 +15,18 @@ export async function openFileRelativePath(_controller: Controller, request: Str
 	const workspacePath = await getWorkspacePath()
 
 	if (!workspacePath) {
-		console.error("Error in openFileRelativePath: No workspace path available")
+		Logger.error("Error in openFileRelativePath: No workspace path available")
 		return Empty.create()
 	}
 
 	if (request.value) {
 		// Resolve the relative path to absolute path
-		const absolutePath = path.resolve(workspacePath, request.value)
+		const resolvedPath = workspaceResolver.resolveWorkspacePath(
+			workspacePath,
+			request.value,
+			"Controller.openFileRelativePath",
+		)
+		const absolutePath = typeof resolvedPath === "string" ? resolvedPath : resolvedPath.absolutePath
 
 		// Open the file using the existing integration
 		openFileIntegration(absolutePath)

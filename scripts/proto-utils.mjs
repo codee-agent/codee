@@ -48,7 +48,7 @@ export async function loadServicesFromProtoDescriptor() {
 		}
 	}
 	const protobusServices = {}
-	for (const [name, def] of Object.entries(proto.cline)) {//huqb
+	for (const [name, def] of Object.entries(proto.cline)) {
 		if (def && "service" in def) {
 			protobusServices[name] = def
 		} else {

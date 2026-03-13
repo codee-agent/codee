@@ -3,6 +3,7 @@ import { getAsVar, VSC_TITLEBAR_INACTIVE_FOREGROUND } from "@/utils/vscStyles"
 import { useTranslation } from "react-i18next"
 import AdvancedAbilitiesModal from "./AdvancedAbilitiesModal"
 import type { ChatState } from "../chat-view/types/chatTypes"
+import { ChevronDownIcon, ChevronRightIcon } from "lucide-react"
 
 interface AdvancedAbilitiesMenuProps {
 	hasMemoryBank: boolean | undefined
@@ -15,20 +16,24 @@ const AdvancedAbilitiesMenu = ({ hasMemoryBank, setHasMemoryBank, chatState }: A
 	const [isVisible, setIsVisible] = useState(false)
 	const buttonRef = useRef<HTMLDivElement>(null)
 
+	const bgGradient = `linear-gradient(to bottom, color-mix(in srgb, var(--vscode-sideBar-background) 96%, white) 0%, transparent 80%)`
+
 	return (
 		<div
-			className="px-[10px] mx-[5px] select-none rounded-[10px_10px_0_0]"
+			className="mx-3.5 select-none rounded-[10px_10px_0_0]"
 			style={{
 				borderTop: `0.5px solid color-mix(in srgb, ${getAsVar(VSC_TITLEBAR_INACTIVE_FOREGROUND)} 20%, transparent)`,
+				background: bgGradient,
 			}}>
 			<div
 				ref={buttonRef}
-				className="cursor-pointer py-[8px] pr-[2px] flex items-center justify-between gap-[8px]"
+				className="cursor-pointer pt-3 pb-3.5 pr-2 px-3.5 flex items-center justify-between gap-[8px]"
 				onClick={() => setIsVisible(!isVisible)}>
 				<div className="flex items-center">
 					<span>{t("advanced.title")}</span>
 				</div>
-				<span className={`codicon codicon-chevron-${isVisible ? "down" : "up"}`} />
+				{isVisible ? <ChevronDownIcon size={16} /> : <ChevronRightIcon size={16} />}
+				{/* <span className={`codicon codicon-chevron-${isVisible ? "down" : "right"}`} /> */}
 			</div>
 
 			<AdvancedAbilitiesModal

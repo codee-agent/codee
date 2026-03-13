@@ -1,7 +1,6 @@
-import * as vscode from "vscode"
 import { buildApiHandler } from "@core/api/index"
 import { Controller } from "@/core/controller"
-import { Mode } from "@/shared/storage/types";
+import { Mode } from "@/shared/storage/types"
 
 export async function enhancePrompt(control: Controller, mode: Mode, input: string): Promise<string> {
 	let enhancedPrompt = ""
@@ -9,10 +8,8 @@ export async function enhancePrompt(control: Controller, mode: Mode, input: stri
 	try {
 		if (control) {
 			try {
-				// const state = await getAllExtensionState(context)
-				// const api = buildApiHandler(state.apiConfiguration)
-				const config = control.cacheService.getApiConfiguration();
-				const api = buildApiHandler(config,mode)
+				const config = control.stateManager.getApiConfiguration()
+				const api = buildApiHandler(config, mode)
 
 				const system = `你是一个专业的提示词优化助手。你需要优化用户输入的提示词，请遵循以下步骤：
                         1. 分析提示词结构：
@@ -40,7 +37,7 @@ export async function enhancePrompt(control: Controller, mode: Mode, input: stri
 						content: `请优化以下提示词，使其更加清晰和有效:\n${input}`,
 					},
 				]
-				let stream = api.createMessage(system, messages)
+				const stream = api.createMessage(system, messages)
 
 				for await (const chunk of stream) {
 					if (chunk.type === "text") {
@@ -53,7 +50,6 @@ export async function enhancePrompt(control: Controller, mode: Mode, input: stri
 			}
 		}
 		return enhancedPrompt || input
-		return input
 	} catch (error) {
 		console.error("Error enhancing prompt:", error)
 		return input

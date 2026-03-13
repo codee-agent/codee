@@ -1,3 +1,9 @@
+/**
+ * Identifier for the MCP tools that are used in native tool calls,
+ * where each tool name is the combination of the server name + identifier + tool name.
+ * This enables to uniquely identify which MCP server a tool belongs to.
+ */
+export const CLINE_MCP_TOOL_IDENTIFIER = "0mcp0"
 export const DEFAULT_MCP_TIMEOUT_SECONDS = 60 // matches Anthropic's default timeout in their MCP SDK
 export const MIN_MCP_TIMEOUT_SECONDS = 1
 export type McpMode = "full" | "server-use-only" | "off"
@@ -10,9 +16,15 @@ export type McpServer = {
 	tools?: McpTool[]
 	resources?: McpResource[]
 	resourceTemplates?: McpResourceTemplate[]
+	prompts?: McpPrompt[]
 	disabled?: boolean
 	timeout?: number
+	uid?: string
+	oauthRequired?: boolean
+	oauthAuthStatus?: McpOAuthAuthStatus
 }
+
+export type McpOAuthAuthStatus = "authenticated" | "unauthenticated" | "pending"
 
 export type McpTool = {
 	name: string
@@ -33,6 +45,54 @@ export type McpResourceTemplate = {
 	name: string
 	description?: string
 	mimeType?: string
+}
+
+export type McpPromptArgument = {
+	name: string
+	description?: string
+	required?: boolean
+}
+
+export type McpPrompt = {
+	name: string
+	title?: string
+	description?: string
+	arguments?: McpPromptArgument[]
+}
+
+export type McpPromptMessageContent =
+	| {
+			type: "text"
+			text: string
+	  }
+	| {
+			type: "image"
+			data: string
+			mimeType: string
+	  }
+	| {
+			type: "audio"
+			data: string
+			mimeType: string
+	  }
+	| {
+			type: "resource"
+			resource: {
+				uri: string
+				mimeType?: string
+				text?: string
+				blob?: string
+			}
+	  }
+
+export type McpPromptMessage = {
+	role: "user" | "assistant"
+	content: McpPromptMessageContent
+}
+
+export type McpPromptResponse = {
+	description?: string
+	messages: McpPromptMessage[]
 }
 
 export type McpResourceResponse = {
@@ -70,6 +130,13 @@ export type McpToolCallResponse = {
 					text?: string
 					blob?: string
 				}
+		  }
+		| {
+				type: "resource_link"
+				uri: string
+				name?: string
+				description?: string
+				mimeType?: string
 		  }
 	>
 	isError?: boolean
@@ -111,4 +178,4 @@ export interface McpDownloadResponse {
 	requiresApiKey: boolean
 }
 
-export type McpViewTab = "marketplace" | "addRemote" | "installed"
+export type McpViewTab = "marketplace" | "addRemote" | "configure"

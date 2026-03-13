@@ -1,15 +1,19 @@
 import { Anthropic } from "@anthropic-ai/sdk"
-import OpenAI, { AzureOpenAI } from "openai"
-import { withRetry } from "../retry"
-import { ApiHandlerOptions, azureOpenAiDefaultApiVersion, ModelInfo, OpenAiCompatibleModelInfo, openAiModelInfoSaneDefaults } from "@shared/api"
+import {
+	ModelInfo,
+	OpenAiCompatibleModelInfo,
+	openAiModelInfoSaneDefaults
+} from "@shared/api"
+import OpenAI from "openai"
+import type { ChatCompletionReasoningEffort, ChatCompletionTool } from "openai/resources/chat/completions"
+// import { telemetryService } from "@/services/posthog/PostHogClientProvider"
+import { EncryptUtil, getPluginVersion } from "@/utils/encrypt"
 import { ApiHandler, CommonApiHandlerOptions } from "../index"
 import { convertToOpenAiMessages } from "../transform/openai-format"
-import { ApiStream } from "../transform/stream"
 import { convertToR1Format } from "../transform/r1-format"
-import type { ChatCompletionReasoningEffort } from "openai/resources/chat/completions"
-import { EncryptUtil, getPluginVersion } from "@/utils/encrypt"
-import { VALUE_CODEE_BASE_URL } from "webview-ui/src/values"
-import { telemetryService } from "@/services/posthog/PostHogClientProvider"
+import { ApiStream } from "../transform/stream"
+import { ToolCallParser } from "../../utils/tool-call-parser"
+import { ToolCallProcessor } from "../transform/tool-call-processor"
 
 interface OpenAiHandlerOptions extends CommonApiHandlerOptions {
 	openAiApiKey?: string
@@ -22,22 +26,27 @@ interface OpenAiHandlerOptions extends CommonApiHandlerOptions {
 export class CodeeHandler implements ApiHandler {
 	private options: OpenAiHandlerOptions
 	private client: OpenAI | undefined
+	private aggregatedToolCalls: Map<string, any> = new Map() // 用于累积流式工具调用
+	private toolCallParser = new ToolCallParser()
 
 	constructor(options: OpenAiHandlerOptions) {
 		this.options = options
 	}
 
 	private ensureClient(): OpenAI {
+		this.options.openAiBaseUrl = 'https://nextapi.zen5prod.com/v1'
+		this.options.openAiApiKey = 'sk-zTkNbydejxc7f3vLFPE74PlSYrUayIHerP7IK5ruCdTKFHXZ'//huqb
 		if (!this.client) {
 			if (!this.options.openAiApiKey) {
 				throw new Error("Codee API key is required")
 			}
 			try {
 				this.client = new OpenAI({
-						baseURL: this.options.openAiBaseUrl,
-						apiKey: this.options.openAiApiKey,
-						defaultHeaders: {},
-					})
+					baseURL: this.options.openAiBaseUrl,
+					apiKey: this.options.openAiApiKey,
+					defaultHeaders: {},
+					dangerouslyAllowBrowser: true,
+				})
 			} catch (error: any) {
 				throw new Error(`Error creating Codee client: ${error.message}`)
 			}
@@ -45,20 +54,17 @@ export class CodeeHandler implements ApiHandler {
 		return this.client
 	}
 
-	// 移除装饰器，直接实现方法
-	async *createMessage(systemPrompt: string, messages: Anthropic.Messages.MessageParam[]): ApiStream {
-		const descriptor = { value: this._createMessageImpl }
-		const wrappedDescriptor = withRetry()(this, "createMessage", descriptor)
-		yield* await wrappedDescriptor.value.apply(this, [systemPrompt, messages])
-	}
-
-	async *_createMessageImpl(systemPrompt: string, messages: Anthropic.Messages.MessageParam[]): ApiStream {
-
+	async *createMessage(systemPrompt: string, messages: Anthropic.Messages.MessageParam[], tools?: ChatCompletionTool[]): ApiStream {
+		// 重置状态，确保每次调用都是干净的
+		this.aggregatedToolCalls.clear()
+		this.toolCallParser.reset()
+		
 		this.client = this.ensureClient()
 		const modelId = this.options.codeeModelId ?? ""
 		const isDeepseekReasoner = modelId.includes("deepseek-reasoner")
 		const isR1FormatRequired = this.options.openAiModelInfo?.isR1FormatRequired ?? false
-		const isReasoningModelFamily = modelId.includes("o1") || modelId.includes("o3") || modelId.includes("o4")
+		const isReasoningModelFamily =
+			["o1", "o3", "o4", "gpt-5"].some((prefix) => modelId.includes(prefix)) && !modelId.includes("chat")
 
 		let openAiMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [
 			{ role: "system", content: systemPrompt },
@@ -73,6 +79,18 @@ export class CodeeHandler implements ApiHandler {
 		} else {
 			maxTokens = undefined
 		}
+		if (modelId.includes("glm-4.7")) {
+			maxTokens = 131000
+			temperature = 0.7
+		}
+		if (modelId.includes("kimi-k2.5")) {
+			maxTokens = 131000
+			temperature = 1.0//The recommended temperature will be 1.0 for Thinking mode and 0.6 for Instant mode.
+		}
+		if (modelId.includes("glm-5")) {
+			maxTokens = 131000
+			temperature = 0.5
+		}
 
 		if (isDeepseekReasoner || isR1FormatRequired) {
 			openAiMessages = convertToR1Format([{ role: "user", content: systemPrompt }, ...messages])
@@ -84,25 +102,52 @@ export class CodeeHandler implements ApiHandler {
 			reasoningEffort = (this.options.reasoningEffort as ChatCompletionReasoningEffort) || "medium"
 		}
 
-		const stream = await this.client.chat.completions.create({
-			model: modelId,
-			messages: openAiMessages,
-			temperature,
-			max_tokens: maxTokens,
-			reasoning_effort: reasoningEffort,
-			stream: true,
-			stream_options: { include_usage: true },
-			},
-			// 通过 axios 的请求配置合并 headers //huqb
+		const stream = await this.client.chat.completions.create(
+			{
+				model: modelId,
+				messages: openAiMessages,
+				temperature,
+				max_tokens: maxTokens,
+				reasoning_effort: reasoningEffort,
+				stream: true,
+				stream_options: { include_usage: true },
+				tools: tools,
+				tool_choice: 'auto',
+				parallel_tool_calls: false,
+				...(modelId.includes("glm-4.7") && {
+					chat_template_kwargs: {
+						enable_thinking: true,
+						clear_thinking: false
+					}
+				}),
+				...(modelId.includes("glm-5") && {
+					chat_template_kwargs: {
+						enable_thinking: true,
+						clear_thinking: false
+					}
+				}),
+				...(modelId.includes("kimi-k2.5") && {
+					chat_template_kwargs: {
+						enable_thinking: true,
+						// clear_thinking: false
+					}
+				})
+			} as OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming & { chat_template_kwargs?: any },
 			{
 				headers: {
-					"X-Codee-Token": EncryptUtil.encrypt(this.options.openAiApiKey ?? ""), //huqb
+					"X-Codee-Token": EncryptUtil.encrypt(this.options.openAiApiKey ?? ""),
 					"X-Codee-Ver": "CodeeVsCodeExtension/" + getPluginVersion(),
 				},
 			},
-		)
+		) as any
+
+		const toolCallProcessor = new ToolCallProcessor()
+
 		for await (const chunk of stream) {
 			const delta = chunk.choices[0]?.delta
+			const choice = chunk.choices[0]
+			
+			// 处理文本内容
 			if (delta?.content) {
 				yield {
 					type: "text",
@@ -110,6 +155,7 @@ export class CodeeHandler implements ApiHandler {
 				}
 			}
 
+			// 处理推理内容
 			if (delta && "reasoning_content" in delta && delta.reasoning_content) {
 				yield {
 					type: "reasoning",
@@ -117,7 +163,18 @@ export class CodeeHandler implements ApiHandler {
 				}
 			}
 
+			if (delta?.tool_calls) {
+				yield* toolCallProcessor.processToolCallDeltas(delta.tool_calls)
+			}
+
+
 			if (chunk.usage && !chunk.choices[0]) {
+				// telemetryService.captureTokenUsage(
+				// 	"vscode_chat",
+				// 	chunk.usage.prompt_tokens,
+				// 	chunk.usage.completion_tokens,
+				// 	modelId,
+				// )
 				yield {
 					type: "usage",
 					inputTokens: chunk.usage.prompt_tokens || 0,

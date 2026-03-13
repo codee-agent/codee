@@ -1,8 +1,8 @@
-import { Empty } from "@/generated/grpc-js/cline/common"
-import { Controller } from ".."
-import { SetAutoCompletionRequest } from "@/shared/proto/cline/business"
 //huqb
 import { updateAutocompleteConfig } from "@continuedev/core/util/codaiConfigUtil"
+import { Empty } from "@/generated/grpc-js/cline/common"
+import { SetAutoCompletionRequest } from "@/shared/proto/cline/business"
+import { Controller } from ".."
 
 // Business logic for setting auto-completion information
 export async function setAutoCompletion(_controller: Controller, request: SetAutoCompletionRequest): Promise<Empty> {

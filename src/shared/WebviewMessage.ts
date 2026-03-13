@@ -1,18 +1,7 @@
-import { CodeeConfig } from "@continuedev/core/util/codaiConfigUtil"
-
 export interface WebviewMessage {
-	type: "grpc_request" 
-		| "grpc_request_cancel"
-		| "updateAutocompleteConfig"
-		| "getAutocompleteConfig"
-		| "autocompleteConfig"
-		| "getLanguageConfig"
-		| "updateLanguageConfig"
-		| "languageConfig"
-		| "enhancePrompt"
+	type: "grpc_request" | "grpc_request_cancel"
 	grpc_request?: GrpcRequest
 	grpc_request_cancel?: GrpcCancel
-	text?: string
 }
 
 export type GrpcRequest = {
@@ -25,9 +14,6 @@ export type GrpcRequest = {
 
 export type GrpcCancel = {
 	request_id: string // ID of the request to cancel
-	// For autocomplete config
-	autocompleteConfig?: Partial<CodeeConfig>
-	language?: string
 }
 
 export type ClineAskResponse = "yesButtonClicked" | "noButtonClicked" | "messageResponse"

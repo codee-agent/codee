@@ -1,16 +1,16 @@
-import { findLast } from "@shared/array"
 import { combineApiRequests } from "@shared/combineApiRequests"
 import { combineCommandSequences } from "@shared/combineCommandSequences"
-import type { ClineApiReqInfo, ClineMessage } from "@shared/ExtensionMessage"
-import { getApiMetrics } from "@shared/getApiMetrics"
+import { combineErrorRetryMessages } from "@shared/combineErrorRetryMessages"
+import { combineHookSequences } from "@shared/combineHookSequences"
+import { getApiMetrics, getLastApiReqTotalTokens } from "@shared/getApiMetrics"
 import { BooleanRequest, StringRequest } from "@shared/proto/cline/common"
-import { useCallback, useEffect, useMemo, useState, useRef } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { useMount } from "react-use"
 import { normalizeApiConfiguration } from "@/components/settings/utils/providerUtils"
 import { useExtensionState } from "@/context/ExtensionStateContext"
+import { useShowNavbar } from "@/context/PlatformContext"
 import { FileServiceClient, UiServiceClient } from "@/services/grpc-client"
-import { t } from "i18next"
-import { Trans } from "react-i18next"
+import { Navbar } from "../menu/Navbar"
 import AutoApproveBar from "./auto-approve-menu/AutoApproveBar"
 import AdvancedAbilitiesMenu from './advanced-abilities-menu/AdvancedAbilitiesMenu'
 // Import utilities and hooks from the new structure
@@ -20,6 +20,7 @@ import {
 	ChatLayout,
 	convertHtmlToMarkdown,
 	filterVisibleMessages,
+	groupLowStakesTools,
 	groupMessages,
 	InputSection,
 	MessagesArea,
@@ -29,7 +30,6 @@ import {
 	useScrollBehavior,
 	WelcomeSection,
 } from "./chat-view"
-import { Navbar } from "../menu/Navbar"
 
 interface ChatViewProps {
 	isHidden: boolean
@@ -42,48 +42,34 @@ interface ChatViewProps {
 const MAX_IMAGES_AND_FILES_PER_MESSAGE = CHAT_CONSTANTS.MAX_IMAGES_AND_FILES_PER_MESSAGE
 const QUICK_WINS_HISTORY_THRESHOLD = 3
 
-const IS_STANDALONE = window?.__is_standalone__ ?? false
-
 const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryView }: ChatViewProps) => {
+	const showNavbar = useShowNavbar()
 	const {
 		version,
 		clineMessages: messages,
 		taskHistory,
 		apiConfiguration,
 		telemetrySetting,
-		navigateToChat,
 		mode,
 		userInfo,
 		currentFocusChainChecklist,
+		hooksEnabled,
 	} = useExtensionState()
 	const isProdHostedApp = userInfo?.apiBaseUrl === "https://app.cline.bot"
 	const shouldShowQuickWins = isProdHostedApp && (!taskHistory || taskHistory.length < QUICK_WINS_HISTORY_THRESHOLD)
 
 	//const task = messages.length > 0 ? (messages[0].say === "task" ? messages[0] : undefined) : undefined) : undefined
 	const task = useMemo(() => messages.at(0), [messages]) // leaving this less safe version here since if the first message is not a task, then the extension is in a bad state and needs to be debugged (see Cline.abort)
-	const modifiedMessages = useMemo(() => combineApiRequests(combineCommandSequences(messages.slice(1))), [messages])
+	const modifiedMessages = useMemo(() => {
+		const slicedMessages = messages.slice(1)
+		// Only combine hook sequences if hooks are enabled
+		const withHooks = hooksEnabled ? combineHookSequences(slicedMessages) : slicedMessages
+		return combineErrorRetryMessages(combineApiRequests(combineCommandSequences(withHooks)))
+	}, [messages, hooksEnabled])
 	// has to be after api_req_finished are all reduced into api_req_started messages
 	const apiMetrics = useMemo(() => getApiMetrics(modifiedMessages), [modifiedMessages])
 
-	const lastApiReqTotalTokens = useMemo(() => {
-		const getTotalTokensFromApiReqMessage = (msg: ClineMessage) => {
-			if (!msg.text) {
-				return 0
-			}
-			const { tokensIn, tokensOut, cacheWrites, cacheReads }: ClineApiReqInfo = JSON.parse(msg.text)
-			return (tokensIn || 0) + (tokensOut || 0) + (cacheWrites || 0) + (cacheReads || 0)
-		}
-		const lastApiReqMessage = findLast(modifiedMessages, (msg) => {
-			if (msg.say !== "api_req_started") {
-				return false
-			}
-			return getTotalTokensFromApiReqMessage(msg) > 0
-		})
-		if (!lastApiReqMessage) {
-			return undefined
-		}
-		return getTotalTokensFromApiReqMessage(lastApiReqMessage)
-	}, [modifiedMessages])
+	const lastApiReqTotalTokens = useMemo(() => getLastApiReqTotalTokens(modifiedMessages) || undefined, [modifiedMessages])
 
 	// Use custom hooks for state management
 	const chatState = useChatState(messages)
@@ -99,6 +85,7 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 		setExpandedRows,
 		textAreaRef,
 	} = chatState
+
 	const [hasMemoryBank, setHasMemoryBank] = useState<boolean | undefined>(false)
 
 	useEffect(() => {
@@ -189,10 +176,6 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 	}, [])
 	// Button state is now managed by useButtonState hook
 
-	useEffect(() => {
-		setExpandedRows({})
-	}, [task?.ts])
-
 	// handleFocusChange is already provided by chatState
 
 	// Use message handlers hook
@@ -239,56 +222,59 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 
 	const shouldDisableFilesAndImages = selectedImages.length + selectedFiles.length >= MAX_IMAGES_AND_FILES_PER_MESSAGE
 
-	// Listen for local focusChatInput event
+	// Subscribe to show webview events from the backend
 	useEffect(() => {
-		const handleFocusChatInput = () => {
-			if (isHidden) {
-				navigateToChat()
-			}
-			textAreaRef.current?.focus()
-		}
+		const cleanup = UiServiceClient.subscribeToShowWebview(
+			{},
+			{
+				onResponse: (event) => {
+					// Only focus if not hidden and preserveEditorFocus is false
+					if (!isHidden && !event.preserveEditorFocus) {
+						textAreaRef.current?.focus()
+					}
+				},
+				onError: (error) => {
+					console.error("Error in showWebview subscription:", error)
+				},
+				onComplete: () => {
+					console.log("showWebview subscription completed")
+				},
+			},
+		)
 
-		window.addEventListener("focusChatInput", handleFocusChatInput)
-
-		return () => {
-			window.removeEventListener("focusChatInput", handleFocusChatInput)
-		}
+		return cleanup
 	}, [isHidden])
 
 	// Set up addToInput subscription
 	useEffect(() => {
-		const clientId = (window as { clineClientId?: string }).clineClientId
-		if (!clientId) {
-			console.error("Client ID not found in window object for addToInput subscription")
-			return
-		}
-
-		const request = StringRequest.create({ value: clientId })
-		const cleanup = UiServiceClient.subscribeToAddToInput(request, {
-			onResponse: (event) => {
-				if (event.value) {
-					setInputValue((prevValue) => {
-						const newText = event.value
-						const newTextWithNewline = newText + "\n"
-						return prevValue ? `${prevValue}\n${newTextWithNewline}` : newTextWithNewline
-					})
-					// Add scroll to bottom after state update
-					// Auto focus the input and start the cursor on a new line for easy typing
-					setTimeout(() => {
-						if (textAreaRef.current) {
-							textAreaRef.current.scrollTop = textAreaRef.current.scrollHeight
-							textAreaRef.current.focus()
-						}
-					}, 0)
-				}
+		const cleanup = UiServiceClient.subscribeToAddToInput(
+			{},
+			{
+				onResponse: (event) => {
+					if (event.value) {
+						setInputValue((prevValue) => {
+							const newText = event.value
+							const newTextWithNewline = newText + "\n"
+							return prevValue ? `${prevValue}\n${newTextWithNewline}` : newTextWithNewline
+						})
+						// Add scroll to bottom after state update
+						// Auto focus the input and start the cursor on a new line for easy typing
+						setTimeout(() => {
+							if (textAreaRef.current) {
+								textAreaRef.current.scrollTop = textAreaRef.current.scrollHeight
+								textAreaRef.current.focus()
+							}
+						}, 0)
+					}
+				},
+				onError: (error) => {
+					console.error("Error in addToInput subscription:", error)
+				},
+				onComplete: () => {
+					console.log("addToInput subscription completed")
+				},
 			},
-			onError: (error) => {
-				console.error("Error in addToInput subscription:", error)
-			},
-			onComplete: () => {
-				console.log("addToInput subscription completed")
-			},
-		})
+		)
 
 		return cleanup
 	}, [])
@@ -325,7 +311,7 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 	}, [modifiedMessages, currentFocusChainChecklist])
 
 	const groupedMessages = useMemo(() => {
-		return groupMessages(visibleMessages)
+		return groupLowStakesTools(groupMessages(visibleMessages))
 	}, [visibleMessages])
 
 	// Use scroll behavior hook
@@ -339,14 +325,13 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 	return (
 		<ChatLayout isHidden={isHidden}>
 			<div className="flex flex-col flex-1 overflow-hidden">
-				{IS_STANDALONE && <Navbar />}
+				{showNavbar && <Navbar />}
 				{task ? (
 					<TaskSection
 						apiMetrics={apiMetrics}
 						lastApiReqTotalTokens={lastApiReqTotalTokens}
 						lastProgressMessageText={lastProgressMessageText}
 						messageHandlers={messageHandlers}
-						scrollBehavior={scrollBehavior}
 						selectedModelInfo={{
 							supportsPromptCache: selectedModelInfo.supportsPromptCache,
 							supportsImages: selectedModelInfo.supportsImages || false,
@@ -375,7 +360,7 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 					/>
 				)}
 			</div>
-			<footer className="bg-[var(--vscode-sidebar-background)]" style={{ gridRow: "2" }}>
+			<footer className="bg-(--vscode-sidebar-background)" style={{ gridRow: "2" }}>
 				<AutoApproveBar />
 				<AdvancedAbilitiesMenu 
 					hasMemoryBank={hasMemoryBank} 
@@ -390,6 +375,7 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 						scrollToBottomSmooth: scrollBehavior.scrollToBottomSmooth,
 						disableAutoScrollRef: scrollBehavior.disableAutoScrollRef,
 						showScrollToBottom: scrollBehavior.showScrollToBottom,
+						virtuosoRef: scrollBehavior.virtuosoRef,
 					}}
 					task={task}
 				/>

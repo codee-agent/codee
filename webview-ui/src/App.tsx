@@ -1,25 +1,27 @@
-import { Boolean, EmptyRequest } from "@shared/proto/cline/common"
+import type { Boolean } from "@shared/proto/cline/common"
+import { EmptyRequest } from "@shared/proto/cline/common"
 import { useEffect } from "react"
 import AccountView from "./components/account/AccountView"
 import ChatView from "./components/chat/ChatView"
 import HistoryView from "./components/history/HistoryView"
 import McpView from "./components/mcp/configuration/McpConfigurationView"
+import OnboardingView from "./components/onboarding/OnboardingView"
 import SettingsView from "./components/settings/SettingsView"
 import WelcomeView from "./components/welcome/WelcomeView"
+import WorktreesView from "./components/worktrees/WorktreesView"
 import { useClineAuth } from "./context/ClineAuthContext"
 import { useExtensionState } from "./context/ExtensionStateContext"
 import { Providers } from "./Providers"
 import { BusinessServiceClient, UiServiceClient } from "./services/grpc-client"
 import i18n from "./i18n"
-import { vscode } from "./utils/vscode"
 
 const AppContent = () => {
+
 	useEffect(() => {
 		// 请求语言配置
-		BusinessServiceClient.getCurrentLanguage(EmptyRequest.create())
-			.then(response => {
-				i18n.changeLanguage(response.value || "en")
-			})
+		BusinessServiceClient.getCurrentLanguage(EmptyRequest.create()).then((response: any) => {
+			i18n.changeLanguage(response.value || "en")
+		})
 	}, [])
 
 	const {
@@ -29,9 +31,12 @@ const AppContent = () => {
 		showMcp,
 		mcpTab,
 		showSettings,
+		settingsTargetSection,
 		showHistory,
 		showAccount,
+		showWorktrees,
 		showAnnouncement,
+		onboardingModels,
 		setShowAnnouncement,
 		setShouldShowAnnouncement,
 		closeMcpView,
@@ -39,6 +44,7 @@ const AppContent = () => {
 		hideSettings,
 		hideHistory,
 		hideAccount,
+		hideWorktrees,
 		hideAnnouncement,
 	} = useExtensionState()
 
@@ -69,18 +75,22 @@ const AppContent = () => {
 
 	return (
 		<div className="flex h-screen w-full flex-col">
-			{showSettings && <SettingsView onDone={hideSettings} />}
+			{showSettings && <SettingsView onDone={hideSettings} targetSection={settingsTargetSection} />}
 			{showHistory && <HistoryView onDone={hideHistory} />}
 			{showMcp && <McpView initialTab={mcpTab} onDone={closeMcpView} />}
 			{showAccount && (
 				<AccountView
+					// activeOrganization={activeOrganization}
+					// clineUser={clineUser}
 					onDone={hideAccount}
+					// organizations={organizations}
 				/>
 			)}
+			{showWorktrees && <WorktreesView onDone={hideWorktrees} />}
 			{/* Do not conditionally load ChatView, it's expensive and there's state we don't want to lose (user input, disableInput, askResponse promise, etc.) */}
 			<ChatView
 				hideAnnouncement={hideAnnouncement}
-				isHidden={showSettings || showHistory || showMcp || showAccount}
+				isHidden={showSettings || showHistory || showMcp || showAccount || showWorktrees}
 				showAnnouncement={showAnnouncement}
 				showHistoryView={navigateToHistory}
 			/>

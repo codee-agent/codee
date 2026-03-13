@@ -1,14 +1,15 @@
-import { VSCodeButton, VSCodeDropdown, VSCodeOption } from "@vscode/webview-ui-toolkit/react"
-import { useExtensionState } from "@/context/ExtensionStateContext"
-import { AccountServiceClient, ModelsServiceClient } from "@/services/grpc-client"
-import { EmptyRequest, StringArray, StringRequest } from "@shared/proto/cline/common"
-import { useTranslation, Trans } from "react-i18next"
-import { VALUE_CODEE_BASE_URL, VALUE_OPENAI_MODEL_ID } from "@/values"
-import { ApiConfiguration } from "@shared/api"
-import { useCallback, useEffect, useRef } from "react"
-import { CodeeModelResponse, OpenAiModelsRequest } from "@shared/proto/cline/models"
-import { DropdownContainer } from "../ApiOptions"
+import { StringRequest } from "@shared/proto/cline/common"
+import { CodeeModelResponse } from "@shared/proto/cline/models"
 import { Mode } from "@shared/storage/types"
+import { VSCodeButton, VSCodeDropdown, VSCodeOption } from "@vscode/webview-ui-toolkit/react"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { InfoIcon } from "lucide-react"
+import { useCallback, useEffect, useRef, useState } from "react"
+import { useTranslation } from "react-i18next"
+import { useExtensionState } from "@/context/ExtensionStateContext"
+import { ModelsServiceClient } from "@/services/grpc-client"
+import { VALUE_CODEE_BASE_URL, VALUE_OPENAI_MODEL_ID } from "@rootUtils/values"
+import { DropdownContainer } from "../ApiOptions"
 import { useApiConfigurationHandlers } from "../utils/useApiConfigurationHandlers"
 
 interface CodeeProviderProps {
@@ -21,25 +22,25 @@ export const CodeeProvider = ({ currentMode }: CodeeProviderProps) => {
 	const { handleFieldChange, handleModeFieldChange } = useApiConfigurationHandlers()
 	const extensionState = useExtensionState()
 
-	let codeeApiKey = apiConfiguration?.codeeApiKey
-	let codeeBaseUrl = `${VALUE_CODEE_BASE_URL}v1`
+	const codeeApiKey = apiConfiguration?.codeeApiKey
+	const codeeBaseUrl = `${VALUE_CODEE_BASE_URL}v1`
 
-useEffect(() => {
-  if (codeeApiKey) {
-    console.log("Codee API Key changed")
-    const apiProvider = currentMode === "plan" 
-      ? apiConfiguration?.planModeApiProvider 
-      : apiConfiguration?.actModeApiProvider
-    if (apiProvider == "codee" && codeeBaseUrl) {
-      debouncedRefreshCodeeModels(codeeBaseUrl, apiConfiguration?.codeeApiKey)
-    }
-  }
-}, [codeeApiKey])
+	useEffect(() => {
+		if (codeeApiKey) {
+			console.log("Codee API Key changed")
+			const apiProvider =
+				currentMode === "plan" ? apiConfiguration?.planModeApiProvider : apiConfiguration?.actModeApiProvider
+			if (apiProvider == "codee" && codeeBaseUrl) {
+				debouncedRefreshCodeeModels(codeeBaseUrl, apiConfiguration?.codeeApiKey)
+			}
+		}
+	}, [codeeApiKey])
+
+	const [showLoginAlert, setShowLoginAlert] = useState(false)
 
 	const handleLogin = () => {
-		AccountServiceClient.accountLoginClicked(EmptyRequest.create()).catch((err) =>
-			console.error("Failed to get login URL:", err),
-		)
+		setShowLoginAlert(true)
+		setTimeout(() => setShowLoginAlert(false), 3000)
 	}
 
 	const handleShowAccount = () => {
@@ -74,6 +75,7 @@ useEffect(() => {
 							const models = response.chatModels || []
 							extensionState.setCodeeModels(models)
 							console.log("@@@@ models", models)
+							extensionState.setCodeeCompleteModels(response.completesModels || [])
 						})
 						.catch((error) => {
 							console.error("Failed to refresh OpenAI models:", error)
@@ -84,15 +86,13 @@ useEffect(() => {
 		[extensionState],
 	)
 
-useEffect(() => {
-  console.log("@@@@ codeeProvider", apiConfiguration?.codeeModelId, apiConfiguration?.codeeApiKey)
-  const apiProvider = currentMode === "plan" 
-    ? apiConfiguration?.planModeApiProvider 
-    : apiConfiguration?.actModeApiProvider
-  if (apiProvider == "codee" && codeeBaseUrl) {
-    debouncedRefreshCodeeModels(codeeBaseUrl, apiConfiguration?.codeeApiKey)
-  }
-}, [])
+	useEffect(() => {
+		console.log("@@@@ codeeProvider", apiConfiguration?.codeeModelId, apiConfiguration?.codeeApiKey)
+		const apiProvider = currentMode === "plan" ? apiConfiguration?.planModeApiProvider : apiConfiguration?.actModeApiProvider
+		if (apiProvider == "codee" && codeeBaseUrl) {
+			debouncedRefreshCodeeModels(codeeBaseUrl, apiConfiguration?.codeeApiKey)
+		}
+	}, [])
 
 	return (
 		<div className="max-w-[600px]">
@@ -104,13 +104,8 @@ useEffect(() => {
 					<div style={{ marginBottom: "2px" }}>
 						<span style={{ fontWeight: 500 }}>{t("settings.api.modelId")}</span>
 					</div>
-					<DropdownContainer zIndex={1001} className="dropdown-container">
+					<DropdownContainer className="dropdown-container" zIndex={1001}>
 						<VSCodeDropdown
-							value={apiConfiguration?.codeeModelId || VALUE_OPENAI_MODEL_ID}
-							style={{
-								width: "100%",
-								marginBottom: 10,
-							}}
 							onChange={(e: any) => {
 								const value = (e.target as HTMLSelectElement)?.value
 								if (value) {
@@ -120,7 +115,12 @@ useEffect(() => {
 									// handleFieldChange(currentMode === "act" ? "actModeOpenAiModelId" : "planModeOpenAiModelId", value)
 									handleFieldChange("codeeModelId", value)
 								}
-							}}>
+							}}
+							style={{
+								width: "100%",
+								marginBottom: 10,
+							}}
+							value={apiConfiguration?.codeeModelId || VALUE_OPENAI_MODEL_ID}>
 							{extensionState.codeeModels.map((model: string) => (
 								<VSCodeOption key={model} value={model}>
 									{model}
@@ -131,11 +131,20 @@ useEffect(() => {
 				</div>
 			) : (
 				<div>
-					<VSCodeButton onClick={handleLogin} className="mt-0">
+					{showLoginAlert && (
+						<Alert variant="default" className="mb-4" isDismissible={false}>
+							<AlertDescription className="flex items-center gap-2">
+								<InfoIcon className="size-3 shrink-0" />
+								This feature is not yet available. Please stay tuned.
+							</AlertDescription>
+						</Alert>
+					)}
+					<VSCodeButton className="mt-0" onClick={handleLogin}>
 						{t("account.signUpButton")}
 					</VSCodeButton>
 				</div>
 			)}
+			
 		</div>
 	)
 }

@@ -1,6 +1,6 @@
-import { Logger } from "@services/logging/Logger"
 import { execa } from "execa"
 import * as path from "path"
+import { Logger } from "@/shared/services/Logger"
 
 /**
  * Validates that the workspace path is valid and writable for Git operations
@@ -74,7 +74,7 @@ export async function initializeGitRepository(workspacePath: string): Promise<bo
 	Logger.log(`Initializing Git repository in ${workspacePath}`)
 	try {
 		await execa("git", ["init"], { cwd: workspacePath })
-		await execa("git", ["config", "user.name", "Cline Evaluation"], { cwd: workspacePath })
+		await execa("git", ["config", "user.name", "Codee Evaluation"], { cwd: workspacePath })
 		await execa("git", ["config", "user.email", "cline@example.com"], { cwd: workspacePath })
 
 		// Try to create an initial commit, but don't fail if there are no files to commit

@@ -1,5 +1,9 @@
+import type { McpServer } from "@shared/mcp"
+import type { SlashCommand } from "@/utils/slash-commands"
 import React, { useCallback, useEffect, useRef } from "react"
-import { getMatchingSlashCommands, SlashCommand } from "@/utils/slash-commands"
+import ScreenReaderAnnounce from "@/components/common/ScreenReaderAnnounce"
+import { useMenuAnnouncement } from "@/hooks/useMenuAnnouncement"
+import { getMatchingSlashCommands } from "@/utils/slash-commands"
 
 interface SlashCommandMenuProps {
 	onSelect: (command: SlashCommand) => void
@@ -9,6 +13,9 @@ interface SlashCommandMenuProps {
 	query: string
 	localWorkflowToggles?: Record<string, boolean>
 	globalWorkflowToggles?: Record<string, boolean>
+	remoteWorkflowToggles?: Record<string, boolean>
+	remoteWorkflows?: any[]
+	mcpServers?: McpServer[]
 }
 
 const SlashCommandMenu: React.FC<SlashCommandMenuProps> = ({
@@ -19,8 +26,36 @@ const SlashCommandMenu: React.FC<SlashCommandMenuProps> = ({
 	query,
 	localWorkflowToggles = {},
 	globalWorkflowToggles = {},
+	remoteWorkflowToggles,
+	remoteWorkflows,
+	mcpServers = [],
 }) => {
 	const menuRef = useRef<HTMLDivElement>(null)
+
+	// Filter commands based on query
+	const filteredCommands = getMatchingSlashCommands(
+		query,
+		localWorkflowToggles,
+		globalWorkflowToggles,
+		remoteWorkflowToggles,
+		remoteWorkflows,
+		mcpServers,
+	)
+	const defaultCommands = filteredCommands.filter((cmd) => cmd.section === "default" || !cmd.section)
+	const workflowCommands = filteredCommands.filter((cmd) => cmd.section === "custom")
+	const mcpCommands = filteredCommands.filter((cmd) => cmd.section === "mcp")
+
+	// Screen reader announcements
+	const getCommandLabel = useCallback((command: SlashCommand) => {
+		const description = command.description ? `, ${command.description}` : ""
+		return `${command.name}${description}`
+	}, [])
+
+	const { announcement } = useMenuAnnouncement({
+		items: filteredCommands,
+		selectedIndex,
+		getItemLabel: getCommandLabel,
+	})
 
 	const handleClick = useCallback(
 		(command: SlashCommand) => {
@@ -45,11 +80,6 @@ const SlashCommandMenu: React.FC<SlashCommandMenuProps> = ({
 		}
 	}, [selectedIndex])
 
-	// Filter commands based on query
-	const filteredCommands = getMatchingSlashCommands(query, localWorkflowToggles, globalWorkflowToggles)
-	const defaultCommands = filteredCommands.filter((cmd) => cmd.section === "default" || !cmd.section)
-	const workflowCommands = filteredCommands.filter((cmd) => cmd.section === "custom")
-
 	// Create a reusable function for rendering a command section
 	const renderCommandSection = (commands: SlashCommand[], title: string, indexOffset: number, showDescriptions: boolean) => {
 		if (commands.length === 0) {
@@ -58,27 +88,31 @@ const SlashCommandMenu: React.FC<SlashCommandMenuProps> = ({
 
 		return (
 			<>
-				<div className="text-xs text-[var(--vscode-descriptionForeground)] px-3 py-1 font-bold border-b border-[var(--vscode-editorGroup-border)]">
+				<div
+					className="text-xs text-(--vscode-descriptionForeground) px-3 py-1 font-bold border-b border-(--vscode-editorGroup-border)"
+					role="presentation">
 					{title}
 				</div>
 				{commands.map((command, index) => {
 					const itemIndex = index + indexOffset
 					return (
 						<div
-							className={`slash-command-menu-item py-2 px-3 cursor-pointer flex flex-col border-b border-[var(--vscode-editorGroup-border)] ${
+							aria-selected={itemIndex === selectedIndex}
+							className={`slash-command-menu-item py-2 px-3 cursor-pointer flex flex-col border-b border-(--vscode-editorGroup-border) ${
 								itemIndex === selectedIndex
-									? "bg-[var(--vscode-quickInputList-focusBackground)] text-[var(--vscode-quickInputList-focusForeground)]"
+									? "bg-(--vscode-quickInputList-focusBackground) text-(--vscode-quickInputList-focusForeground)"
 									: ""
-							} hover:bg-[var(--vscode-list-hoverBackground)]`}
+							} hover:bg-(--vscode-list-hoverBackground)`}
 							id={`slash-command-menu-item-${itemIndex}`}
 							key={command.name}
 							onClick={() => handleClick(command)}
-							onMouseEnter={() => setSelectedIndex(itemIndex)}>
+							onMouseEnter={() => setSelectedIndex(itemIndex)}
+							role="option">
 							<div className="font-bold whitespace-nowrap overflow-hidden text-ellipsis">
 								<span className="ph-no-capture">/{command.name}</span>
 							</div>
 							{showDescriptions && command.description && (
-								<div className="text-[0.85em] text-[var(--vscode-descriptionForeground)] whitespace-normal overflow-hidden text-ellipsis">
+								<div className="text-[0.85em] text-(--vscode-descriptionForeground) whitespace-normal overflow-hidden text-ellipsis">
 									<span className="ph-no-capture">{command.description}</span>
 								</div>
 							)}
@@ -91,20 +125,31 @@ const SlashCommandMenu: React.FC<SlashCommandMenuProps> = ({
 
 	return (
 		<div
-			className="absolute bottom-[calc(100%-10px)] left-[15px] right-[15px] overflow-x-hidden z-[1000]"
+			className="absolute bottom-[calc(100%-10px)] left-[15px] right-[15px] overflow-x-hidden z-1000"
+			data-testid="slash-commands-menu"
 			onMouseDown={onMouseDown}>
+			<ScreenReaderAnnounce message={announcement} />
 			<div
-				className="bg-[var(--vscode-dropdown-background)] border border-[var(--vscode-editorGroup-border)] rounded-[3px] shadow-[0_4px_10px_rgba(0,0,0,0.25)] flex flex-col overflow-y-auto"
+				aria-activedescendant={filteredCommands.length > 0 ? `slash-command-menu-item-${selectedIndex}` : undefined}
+				aria-label="Slash commands"
+				className="bg-(--vscode-dropdown-background) border border-(--vscode-editorGroup-border) rounded-[3px] shadow-[0_4px_10px_rgba(0,0,0,0.25)] flex flex-col overflow-y-auto"
 				ref={menuRef}
+				role="listbox"
 				style={{ maxHeight: "min(200px, calc(50vh))", overscrollBehavior: "contain" }}>
 				{filteredCommands.length > 0 ? (
 					<>
 						{renderCommandSection(defaultCommands, "Default Commands", 0, true)}
 						{renderCommandSection(workflowCommands, "Workflow Commands", defaultCommands.length, false)}
+						{renderCommandSection(
+							mcpCommands,
+							"MCP Prompts",
+							defaultCommands.length + workflowCommands.length,
+							true,
+						)}
 					</>
 				) : (
-					<div className="py-2 px-3 cursor-default flex flex-col">
-						<div className="text-[0.85em] text-[var(--vscode-descriptionForeground)]">No matching commands found</div>
+					<div aria-selected="false" className="py-2 px-3 cursor-default flex flex-col" role="option">
+						<div className="text-[0.85em] text-(--vscode-descriptionForeground)">No matching commands found</div>
 					</div>
 				)}
 			</div>

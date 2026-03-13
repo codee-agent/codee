@@ -3,6 +3,7 @@ import { refreshExternalRulesToggles } from "@core/context/instructions/user-ins
 import { refreshWorkflowToggles } from "@core/context/instructions/user-instructions/workflows"
 import { EmptyRequest } from "@shared/proto/cline/common"
 import { RefreshedRules } from "@shared/proto/cline/file"
+import { Logger } from "@/shared/services/Logger"
 import { getCwd, getDesktopDir } from "@/utils/path"
 import type { Controller } from "../index"
 
@@ -16,7 +17,10 @@ export async function refreshRules(controller: Controller, _request: EmptyReques
 	try {
 		const cwd = await getCwd(getDesktopDir())
 		const { globalToggles, localToggles } = await refreshClineRulesToggles(controller, cwd)
-		const { cursorLocalToggles, windsurfLocalToggles } = await refreshExternalRulesToggles(controller, cwd)
+		const { cursorLocalToggles, windsurfLocalToggles, agentsLocalToggles } = await refreshExternalRulesToggles(
+			controller,
+			cwd,
+		)
 		const { localWorkflowToggles, globalWorkflowToggles } = await refreshWorkflowToggles(controller, cwd)
 
 		return RefreshedRules.create({
@@ -24,11 +28,12 @@ export async function refreshRules(controller: Controller, _request: EmptyReques
 			localClineRulesToggles: { toggles: localToggles },
 			localCursorRulesToggles: { toggles: cursorLocalToggles },
 			localWindsurfRulesToggles: { toggles: windsurfLocalToggles },
+			localAgentsRulesToggles: { toggles: agentsLocalToggles },
 			localWorkflowToggles: { toggles: localWorkflowToggles },
 			globalWorkflowToggles: { toggles: globalWorkflowToggles },
 		})
 	} catch (error) {
-		console.error("Failed to refresh rules:", error)
+		Logger.error("Failed to refresh rules:", error)
 		throw error
 	}
 }

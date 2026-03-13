@@ -18,6 +18,9 @@ service BusinessService {
     
   // Get auto-completion information
   rpc getAutoCompletion(EmptyRequest) returns (AutoCompletionResponse);
+
+  // Get all-auto-completion information
+  rpc getAllAutoCompletion(EmptyRequest) returns (AllAutoCompletionResponse);
     
   // Enhance prompts
   rpc enhancePrompts(EnhancePromptsRequest) returns (String);
@@ -51,6 +54,12 @@ message SetAutoCompletionRequest {
 // Response for getting auto-completion information
 message AutoCompletionResponse {
   AutoCompletionConfig auto_completion = 1;
+}
+
+// Response for getting all-auto-completion information
+message AllAutoCompletionResponse {
+  repeated AutoCompletionConfig auto_completion = 1;
+  string currentCompleteProvider = 2;
 }
 
 // Request for enhancing prompts

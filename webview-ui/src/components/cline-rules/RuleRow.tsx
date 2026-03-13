@@ -1,8 +1,32 @@
 import { StringRequest } from "@shared/proto/cline/common"
-import { DeleteRuleFileRequest } from "@shared/proto-conversions/file/rule-files-conversion"
-import { VSCodeButton } from "@vscode/webview-ui-toolkit/react"
-import { useTranslation } from "react-i18next"
+import { DeleteSkillRequest, RuleFileRequest } from "@shared/proto/index.cline"
+import { REMOTE_URI_SCHEME } from "@shared/remote-config/constants"
+import { EyeIcon, InfoIcon, PenIcon, Trash2Icon } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Switch } from "@/components/ui/switch"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { FileServiceClient } from "@/services/grpc-client"
+
+function isWin32Path(filePath: string): boolean {
+	return /^[a-zA-Z]:\\/.test(filePath)
+}
+
+function splitPath(filePath: string): string[] {
+	const win32 = isWin32Path(filePath)
+	return filePath.split(win32 ? "\\" : "/")
+}
+
+function getDisplayNameFromPath(filePath: string): string {
+	const parts = splitPath(filePath)
+	return parts.at(-1) || filePath
+}
+
+function getSkillDisplayNameFromSkillMdPath(filePath: string): string {
+	const parts = splitPath(filePath)
+	const displayName = getDisplayNameFromPath(filePath)
+	// Path is like /path/to/skill-name/SKILL.md, we want skill-name
+	return parts.at(-2) || displayName
+}
 
 const RuleRow: React.FC<{
 	rulePath: string
@@ -10,12 +34,16 @@ const RuleRow: React.FC<{
 	isGlobal: boolean
 	ruleType: string
 	toggleRule: (rulePath: string, enabled: boolean) => void
-}> = ({ rulePath, enabled, isGlobal, toggleRule, ruleType }) => {
-	const { t } = useTranslation()
-	// Check if the path type is Windows
-	const win32Path = /^[a-zA-Z]:\\/.test(rulePath)
-	// Get the filename from the path for display
-	const displayName = rulePath.split(win32Path ? "\\" : "/").pop() || rulePath
+	isRemote?: boolean
+	alwaysEnabled?: boolean
+	onDeleteSkill?: () => void
+}> = ({ rulePath, enabled, isGlobal, toggleRule, ruleType, isRemote = false, alwaysEnabled = false, onDeleteSkill }) => {
+	const displayName = getDisplayNameFromPath(rulePath)
+	const skillDisplayName = getSkillDisplayNameFromSkillMdPath(rulePath)
+
+	// For remote rules, the rulePath is already the display name
+	const finalDisplayName = isRemote ? rulePath : ruleType === "skill" ? skillDisplayName : displayName
+	const isDisabled = isRemote && alwaysEnabled
 
 	const getRuleTypeIcon = () => {
 		switch (ruleType) {
@@ -53,78 +81,99 @@ const RuleRow: React.FC<{
 						</g>
 					</svg>
 				)
+			case "agents":
+				return (
+					<svg
+						height="16"
+						style={{ verticalAlign: "middle" }}
+						viewBox="0 0 24 24"
+						width="16"
+						xmlns="http://www.w3.org/2000/svg">
+						<g fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5">
+							<circle cx="12" cy="8" r="3" />
+							<path d="M12 14c-4 0-6 2-6 4v2h12v-2c0-2-2-4-6-4z" />
+						</g>
+					</svg>
+				)
 			default:
 				return null
 		}
 	}
 
 	const handleEditClick = () => {
-		FileServiceClient.openFile(StringRequest.create({ value: rulePath })).catch((err) =>
+		// For remote rules, use the special remote:// URI format
+		const filePath = isRemote ? `${REMOTE_URI_SCHEME}${ruleType === "workflow" ? "workflow" : "rule"}/${rulePath}` : rulePath
+		FileServiceClient.openFile(StringRequest.create({ value: filePath })).catch((err) =>
 			console.error("Failed to open file:", err),
 		)
 	}
 
 	const handleDeleteClick = () => {
-		FileServiceClient.deleteRuleFile(
-			DeleteRuleFileRequest.create({
-				rulePath: rulePath,
-				isGlobal: isGlobal,
-				type: ruleType || "codee",
-			}),
-		).catch((err) => console.error("Failed to delete rule file:", err))
+		if (ruleType === "skill") {
+			FileServiceClient.deleteSkillFile(
+				DeleteSkillRequest.create({
+					skillPath: rulePath,
+					isGlobal,
+				}),
+			)
+				.then(() => onDeleteSkill?.())
+				.catch((err) => console.error("Failed to delete skill:", err))
+		} else {
+			FileServiceClient.deleteRuleFile(
+				RuleFileRequest.create({
+					rulePath,
+					isGlobal,
+					type: ruleType || "cline",
+				}),
+			).catch((err) => console.error("Failed to delete rule file:", err))
+		}
 	}
 
 	return (
 		<div className="mb-2.5">
-			<div
-				className={`flex items-center p-2 rounded bg-[var(--vscode-textCodeBlock-background)] h-[18px] ${
-					enabled ? "opacity-100" : "opacity-60"
-				}`}>
+			<div className="flex items-center px-2 py-4 rounded bg-text-block-background max-h-4">
 				<span className="flex-1 overflow-hidden break-all whitespace-normal flex items-center mr-1" title={rulePath}>
 					{getRuleTypeIcon() && <span className="mr-1.5">{getRuleTypeIcon()}</span>}
-					<span className="ph-no-capture">{displayName}</span>
+					<span className="ph-no-capture">{finalDisplayName}</span>
+					{ruleType === "agents" && (
+						<Tooltip>
+							<TooltipTrigger asChild className="cursor-help">
+								<InfoIcon className="ml-1.5 opacity-70 size-[0.85rem]" />
+							</TooltipTrigger>
+							<TooltipContent>
+								Searches recursively for all AGENTS.md files in the workspace when a top-level AGENTS.md exists
+							</TooltipContent>
+						</Tooltip>
+					)}
 				</span>
 
 				{/* Toggle Switch */}
-				<div className="flex items-center ml-2 space-x-2">
-					<div
-						aria-checked={enabled}
-						className={`w-[20px] h-[10px] rounded-[5px] relative cursor-pointer transition-colors duration-200 ${
-							enabled
-								? "bg-[var(--vscode-testing-iconPassed)] opacity-90"
-								: "bg-[var(--vscode-titleBar-inactiveForeground)] opacity-50"
-						}`}
+				<div className="flex items-center space-x-2 gap-2">
+					<Switch
+						checked={enabled}
+						className="mx-1"
+						disabled={isDisabled}
+						key={rulePath}
 						onClick={() => toggleRule(rulePath, !enabled)}
-						onKeyDown={(e) => {
-							if (e.key === "Enter" || e.key === " ") {
-								e.preventDefault()
-								toggleRule(rulePath, !enabled)
-							}
-						}}
-						role="switch"
-						tabIndex={0}>
-						<div
-							className={`w-[6px] h-[6px] bg-white border border-[#66666699] rounded-full absolute top-[1px] transition-all duration-200 ${
-								enabled ? "left-[12px]" : "left-[2px]"
-							}`}
-						/>
-					</div>
-					<VSCodeButton
-						appearance="icon"
-						aria-label={t("CodeeRules.editRuleFile")}
+						title={isDisabled ? "This rule is required and cannot be disabled" : undefined}
+					/>
+					<Button
+						aria-label={isRemote ? "View rule file" : "Edit rule file"}
 						onClick={handleEditClick}
-						style={{ height: "20px" }}
-						title={t("CodeeRules.editRuleFile")}>
-						<span className="codicon codicon-edit" style={{ fontSize: "14px" }} />
-					</VSCodeButton>
-					<VSCodeButton
-						appearance="icon"
-						aria-label={t("CodeeRules.deleteRuleFile")}
+						size="xs"
+						title={isRemote ? "View rule file (read-only)" : "Edit rule file"}
+						variant="icon">
+						{isRemote ? <EyeIcon /> : <PenIcon />}
+					</Button>
+					<Button
+						aria-label="Delete rule file"
+						disabled={isRemote}
 						onClick={handleDeleteClick}
-						style={{ height: "20px" }}
-						title={t("CodeeRules.deleteRuleFile")}>
-						<span className="codicon codicon-trash" style={{ fontSize: "14px" }} />
-					</VSCodeButton>
+						size="xs"
+						title="Delete rule file"
+						variant="icon">
+						<Trash2Icon />
+					</Button>
 				</div>
 			</div>
 		</div>

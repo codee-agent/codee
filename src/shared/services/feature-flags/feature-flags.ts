@@ -1,7 +1,16 @@
-export const FEATURE_FLAGS = {
-	CUSTOM_INSTRUCTIONS: "custom-instructions",
-	// Further flags here
-	DEV_ENV_POSTHOG: "dev-env-posthog",
-} as const
+import type { FeatureFlagPayload } from "@/services/feature-flags/providers/IFeatureFlagsProvider"
 
-export type FeatureFlag = (typeof FEATURE_FLAGS)[keyof typeof FEATURE_FLAGS]
+export enum FeatureFlag {
+	WEBTOOLS = "webtools",
+	WORKTREES = "worktree-exp",
+	// Feature flag for showing the new onboarding flow or old welcome view.
+	ONBOARDING_MODELS = "onboarding_models",
+}
+
+export const FeatureFlagDefaultValue: Partial<Record<FeatureFlag, FeatureFlagPayload>> = {
+	[FeatureFlag.WEBTOOLS]: false,
+	[FeatureFlag.WORKTREES]: false,
+	[FeatureFlag.ONBOARDING_MODELS]: process.env.E2E_TEST === "true" ? { models: {} } : undefined,
+}
+
+export const FEATURE_FLAGS = Object.values(FeatureFlag)

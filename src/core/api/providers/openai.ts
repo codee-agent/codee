@@ -1,23 +1,27 @@
-import { Anthropic } from "@anthropic-ai/sdk"
+import { DefaultAzureCredential, getBearerTokenProvider } from "@azure/identity"
 import { azureOpenAiDefaultApiVersion, ModelInfo, OpenAiCompatibleModelInfo, openAiModelInfoSaneDefaults } from "@shared/api"
 import OpenAI, { AzureOpenAI } from "openai"
-import type { ChatCompletionReasoningEffort } from "openai/resources/chat/completions"
+import type { ChatCompletionReasoningEffort, ChatCompletionTool } from "openai/resources/chat/completions"
+import { buildExternalBasicHeaders } from "@/services/EnvUtils"
+import { ClineStorageMessage } from "@/shared/messages/content"
+import { createOpenAIClient, fetch } from "@/shared/net"
 import { ApiHandler, CommonApiHandlerOptions } from "../index"
 import { withRetry } from "../retry"
 import { convertToOpenAiMessages } from "../transform/openai-format"
 import { convertToR1Format } from "../transform/r1-format"
 import { ApiStream } from "../transform/stream"
+import { getOpenAIToolParams, ToolCallProcessor } from "../transform/tool-call-processor"
 
 interface OpenAiHandlerOptions extends CommonApiHandlerOptions {
 	openAiApiKey?: string
 	openAiBaseUrl?: string
 	azureApiVersion?: string
+	azureIdentity?: boolean
 	openAiHeaders?: Record<string, string>
 	openAiModelId?: string
 	openAiModelInfo?: OpenAiCompatibleModelInfo
 	reasoningEffort?: string
 }
-import { EncryptUtil, getPluginVersion } from "@/utils/encrypt"
 
 export class OpenAiHandler implements ApiHandler {
 	private options: OpenAiHandlerOptions
@@ -27,28 +31,55 @@ export class OpenAiHandler implements ApiHandler {
 		this.options = options
 	}
 
+	private getAzureAudienceScope(baseUrl?: string): string {
+		const url = baseUrl?.toLowerCase() ?? ""
+		if (url.includes("azure.us")) return "https://cognitiveservices.azure.us/.default"
+		if (url.includes("azure.com")) return "https://cognitiveservices.azure.com/.default"
+		return "https://cognitiveservices.azure.com/.default"
+	}
+
 	private ensureClient(): OpenAI {
 		if (!this.client) {
-			if (!this.options.openAiApiKey) {
-				throw new Error("OpenAI API key is required")
+			if (!this.options.openAiApiKey && !this.options.azureIdentity) {
+				throw new Error("OpenAI API key or Azure Identity Authentication is required")
 			}
 			try {
-				// Azure API shape slightly differs from the core API shape: https://github.com/openai/openai-node?tab=readme-ov-file#microsoft-azure-openai
-				// Use azureApiVersion to determine if this is an Azure endpoint, since the URL may not always contain 'azure.com'
+				const baseUrl = this.options.openAiBaseUrl?.toLowerCase() ?? ""
+				const isAzureDomain = baseUrl.includes("azure.com") || baseUrl.includes("azure.us")
+				const externalHeaders = buildExternalBasicHeaders()
+				// Azure API shape slightly differs from the core API shape...
 				if (
 					this.options.azureApiVersion ||
-					((this.options.openAiBaseUrl?.toLowerCase().includes("azure.com") ||
-						this.options.openAiBaseUrl?.toLowerCase().includes("azure.us")) &&
-						!this.options.openAiModelId?.toLowerCase().includes("deepseek"))
+					(isAzureDomain && !this.options.openAiModelId?.toLowerCase().includes("deepseek"))
 				) {
-					this.client = new AzureOpenAI({
-						baseURL: this.options.openAiBaseUrl,
-						apiKey: this.options.openAiApiKey,
-						apiVersion: this.options.azureApiVersion || azureOpenAiDefaultApiVersion,
-						defaultHeaders: this.options.openAiHeaders,
-					})
+					if (this.options.azureIdentity) {
+						this.client = new AzureOpenAI({
+							baseURL: this.options.openAiBaseUrl,
+							azureADTokenProvider: getBearerTokenProvider(
+								new DefaultAzureCredential(),
+								this.getAzureAudienceScope(this.options.openAiBaseUrl),
+							),
+							apiVersion: this.options.azureApiVersion || azureOpenAiDefaultApiVersion,
+							defaultHeaders: {
+								...externalHeaders,
+								...this.options.openAiHeaders,
+							},
+							fetch,
+						})
+					} else {
+						this.client = new AzureOpenAI({
+							baseURL: this.options.openAiBaseUrl,
+							apiKey: this.options.openAiApiKey,
+							apiVersion: this.options.azureApiVersion || azureOpenAiDefaultApiVersion,
+							defaultHeaders: {
+								...externalHeaders,
+								...this.options.openAiHeaders,
+							},
+							fetch,
+						})
+					}
 				} else {
-					this.client = new OpenAI({
+					this.client = createOpenAIClient({
 						baseURL: this.options.openAiBaseUrl,
 						apiKey: this.options.openAiApiKey,
 						defaultHeaders: this.options.openAiHeaders,
@@ -61,26 +92,26 @@ export class OpenAiHandler implements ApiHandler {
 		return this.client
 	}
 
-	// 移除装饰器，直接实现方法
-	async *createMessage(systemPrompt: string, messages: Anthropic.Messages.MessageParam[]): ApiStream {
-		const descriptor = { value: this._createMessageImpl }
-		const wrappedDescriptor = withRetry()(this, "createMessage", descriptor)
-		yield* await wrappedDescriptor.value.apply(this, [systemPrompt, messages])
-	}
-	// @withRetry()
-	async *_createMessageImpl(systemPrompt: string, messages: Anthropic.Messages.MessageParam[]): ApiStream {
-
-		this.client = this.ensureClient()
+	@withRetry()
+	async *createMessage(systemPrompt: string, messages: ClineStorageMessage[], tools?: ChatCompletionTool[]): ApiStream {
+		const client = this.ensureClient()
 		const modelId = this.options.openAiModelId ?? ""
 		const isDeepseekReasoner = modelId.includes("deepseek-reasoner")
 		const isR1FormatRequired = this.options.openAiModelInfo?.isR1FormatRequired ?? false
-		const isReasoningModelFamily = modelId.includes("o1") || modelId.includes("o3") || modelId.includes("o4")
+		const isReasoningModelFamily =
+			["o1", "o3", "o4", "gpt-5"].some((prefix) => modelId.includes(prefix)) && !modelId.includes("chat")
 
 		let openAiMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [
 			{ role: "system", content: systemPrompt },
 			...convertToOpenAiMessages(messages),
 		]
-		let temperature: number | undefined = this.options.openAiModelInfo?.temperature ?? openAiModelInfoSaneDefaults.temperature
+		let temperature: number | undefined
+		if (this.options.openAiModelInfo?.temperature !== undefined) {
+			const tempValue = Number(this.options.openAiModelInfo.temperature)
+			temperature = tempValue === 0 ? undefined : tempValue
+		} else {
+			temperature = openAiModelInfoSaneDefaults.temperature
+		}
 		let reasoningEffort: ChatCompletionReasoningEffort | undefined
 		let maxTokens: number | undefined
 
@@ -100,7 +131,7 @@ export class OpenAiHandler implements ApiHandler {
 			reasoningEffort = (this.options.reasoningEffort as ChatCompletionReasoningEffort) || "medium"
 		}
 
-		const stream = await this.client.chat.completions.create({
+		const stream = await client.chat.completions.create({
 			model: modelId,
 			messages: openAiMessages,
 			temperature,
@@ -108,17 +139,13 @@ export class OpenAiHandler implements ApiHandler {
 			reasoning_effort: reasoningEffort,
 			stream: true,
 			stream_options: { include_usage: true },
-			},
-			// 通过 axios 的请求配置合并 headers //huqb
-			{
-				headers: {
-					"X-Codee-Token": EncryptUtil.encrypt(this.options.openAiApiKey ?? ""), //huqb
-					"X-Codee-Ver": "CodeeVsCodeExtension/" + getPluginVersion(),
-				},
-			},
-		)
+			...getOpenAIToolParams(tools),
+		})
+
+		const toolCallProcessor = new ToolCallProcessor()
+
 		for await (const chunk of stream) {
-			const delta = chunk.choices[0]?.delta
+			const delta = chunk.choices?.[0]?.delta
 			if (delta?.content) {
 				yield {
 					type: "text",
@@ -133,14 +160,17 @@ export class OpenAiHandler implements ApiHandler {
 				}
 			}
 
-			if (chunk.usage && !chunk.choices[0]) {
+			if (delta?.tool_calls) {
+				yield* toolCallProcessor.processToolCallDeltas(delta.tool_calls)
+			}
+
+			if (chunk.usage) {
 				yield {
 					type: "usage",
 					inputTokens: chunk.usage.prompt_tokens || 0,
 					outputTokens: chunk.usage.completion_tokens || 0,
-					// @ts-ignore-next-line
 					cacheReadTokens: chunk.usage.prompt_tokens_details?.cached_tokens || 0,
-					// @ts-ignore-next-line
+					// @ts-expect-error-next-line
 					cacheWriteTokens: chunk.usage.prompt_cache_miss_tokens || 0,
 				}
 			}

@@ -54,43 +54,47 @@ const DEFAULT_CONFIG: CodeeConfig = {
 }
 
 function normalizeProviderName(provider: string): string {
-	return provider?.replace("Compatiable", "Compatible")
+  return provider?.replace("Compatiable", "Compatible")
 }
 
 function migrateLegacyConfig(config: any): CodeeConfig {
 	if (config?.currentCompleteProvider) {
 		config.currentCompleteProvider = normalizeProviderName(config.currentCompleteProvider)
 	}
-	if (!config.autocomplete || Array.isArray(config.autocomplete)) {
-		if (Array.isArray(config.autocomplete)) {
-			config.autocomplete = config.autocomplete.map((item: any) => ({
-				...item,
-				provider: normalizeProviderName(item.provider),
-			}))
-		}
-		return config
-	}
-
-	return {
-		...config,
-		autocomplete: [
-			{
-				...config.autocomplete,
-				provider: "Openai Compatible",
-				title: config.autocomplete.title || "autocomplete-coder",
-			},
-			{
-				provider: "codee",
-				title: "autocomplete-coder",
-				model: "",
-				apiKey: "",
-				apiBase: "",
-				enable: false,
-			},
-		],
-		currentCompleteProvider: "Openai Compatible",
-	}
+  if (!config.autocomplete || Array.isArray(config.autocomplete)) {
+    // 修正现有数组中的拼写
+    if (Array.isArray(config.autocomplete)) {
+      config.autocomplete = config.autocomplete.map((item: any) => ({
+        ...item,
+        provider: normalizeProviderName(item.provider)
+      }))
+    }
+    return config
+  }
+  
+  // 迁移旧配置并修正拼写
+  return {
+    ...config,
+    autocomplete: [
+      {
+        ...config.autocomplete,
+        provider: "Openai Compatible", // 直接使用正确拼写
+        title: config.autocomplete.title || 'autocomplete-coder'
+      },
+      {
+        provider: "codee",
+        title: "autocomplete-coder",
+        model: "",
+        apiKey: "",
+        apiBase: "",
+        enable: false,
+      }
+    ],
+		currentCompleteProvider: 'Openai Compatible'
+  }
 }
+
+
 
 export function getCodeeConfig(): CodeeConfig {
 	const configPath = getCodeeConfigJsonPath()
@@ -122,7 +126,7 @@ export function updateCodeeConfig(config: Partial<CodeeConfig>, type: number = 0
 		autocompleteConfig.apiBase = AesUtil.aesEncrypt(url)
 		autocompleteConfig.apiKey = AesUtil.aesEncrypt(key)
 	}
-
+	console.log('updateCodeeConfig###', newConfig)
 	fs.writeFileSync(getCodeeConfigJsonPath(), JSON.stringify(newConfig, null, 2))
 }
 
@@ -142,7 +146,7 @@ export function getAutocompleteConfig() {
 	}
 }
 
-export function getAllAutocompleteConfig(): Partial<CodeeConfig> {
+export function getAllAutocompleteConfig() {
 	const config = getCodeeConfig()
 	config.autocomplete.map((item) => {
 		item.apiBase = item.apiBase ? AesUtil.aesDecrypt(item.apiBase) : item.apiBase
@@ -157,7 +161,7 @@ export function getAllAutocompleteConfig(): Partial<CodeeConfig> {
 export function updateAutocompleteConfig(config: Partial<CodeeConfig["autocomplete"][0]>) {
 	const currentConfig = getCodeeConfig()
 	const updatedAutocomplete = currentConfig.autocomplete.map((item) =>
-		item.provider === config.provider
+		item.provider.toLowerCase() === config.provider?.toLowerCase()
 			? {
 					...item,
 					...config,

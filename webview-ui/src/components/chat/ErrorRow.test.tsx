@@ -8,7 +8,9 @@ vi.mock("@/context/ClineAuthContext", () => ({
 	useClineAuth: () => ({
 		clineUser: null,
 	}),
-	handleSignIn: vi.fn(),
+	useClineSignIn: () => ({
+		isLoginLoading: false,
+	}),
 	handleSignOut: vi.fn(),
 }))
 
@@ -54,13 +56,6 @@ describe("ErrorRow", () => {
 		expect(screen.getByText("Mistake limit reached")).toBeInTheDocument()
 	})
 
-	it("renders auto approval max requests error", () => {
-		const maxReqMessage = { ...mockMessage, text: "Max requests reached" }
-		render(<ErrorRow errorType="auto_approval_max_req_reached" message={maxReqMessage} />)
-
-		expect(screen.getByText("Max requests reached")).toBeInTheDocument()
-	})
-
 	it("renders diff error", () => {
 		render(<ErrorRow errorType="diff_error" message={mockMessage} />)
 
@@ -73,7 +68,7 @@ describe("ErrorRow", () => {
 		const clineignoreMessage = { ...mockMessage, text: "/path/to/file.txt" }
 		render(<ErrorRow errorType="clineignore_error" message={clineignoreMessage} />)
 
-		expect(screen.getByText(/Codee tried to access/)).toBeInTheDocument()
+		expect(screen.getByText(/Cline tried to access/)).toBeInTheDocument()
 		expect(screen.getByText("/path/to/file.txt")).toBeInTheDocument()
 	})
 
@@ -184,11 +179,9 @@ describe("ErrorRow", () => {
 
 			render(<ErrorRow apiRequestFailedMessage="Some API error" errorType="error" message={mockMessage} />)
 
-			// When ClineError.parse returns null, clineErrorMessage is undefined, so it renders an empty paragraph
-			// The fallback to message.text only happens when there's no apiRequestFailedMessage at all
-			const paragraph = screen.getByRole("paragraph")
-			expect(paragraph).toBeInTheDocument()
-			expect(paragraph).toBeEmptyDOMElement()
+			// When ClineError.parse returns null, we display the raw error message for non-Cline providers
+			// Since clineError is undefined, isClineProvider is false, so we show the raw apiRequestFailedMessage
+			expect(screen.getByText("Some API error")).toBeInTheDocument()
 		})
 
 		it("renders regular error message when no API error messages are provided", () => {

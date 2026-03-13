@@ -1,7 +1,6 @@
 import { EmptyRequest } from "@/generated/grpc-js/cline/common"
 import { String } from "@/shared/proto/cline/common"
 import { Controller } from ".."
-
 import { getLanguageConfig } from "@continuedev/core/util/codaiConfigUtil"
 
 // Business logic for getting current language

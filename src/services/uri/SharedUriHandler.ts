@@ -1,5 +1,5 @@
-import * as vscode from "vscode"
 import { WebviewProvider } from "@/core/webview"
+import { Logger } from "@/shared/services/Logger"
 
 /**
  * Shared URI handler that processes both VSCode URI events and HTTP server callbacks
@@ -7,22 +7,31 @@ import { WebviewProvider } from "@/core/webview"
 export class SharedUriHandler {
 	/**
 	 * Processes a URI and routes it to the appropriate handler
-	 * @param uri The URI to process (can be from VSCode or converted from HTTP)
+	 * @param url The URI to process (can be from VSCode or converted from HTTP)
 	 * @returns Promise<boolean> indicating success (true) or failure (false)
 	 */
-	public static async handleUri(uri: vscode.Uri): Promise<boolean> {
-		console.log("SharedUriHandler: Processing URI:", {
-			path: uri.path,
-			query: uri.query,
-			scheme: uri.scheme,
-		})
+	public static async handleUri(url: string): Promise<boolean> {
+		const parsedUrl = new URL(url)
+		const path = parsedUrl.pathname
 
-		const path = uri.path
-		const query = new URLSearchParams(uri.query.replace(/\+/g, "%2B"))
+		// Create URLSearchParams from the query string, but preserve plus signs
+		// by replacing them with a placeholder before parsing
+		const queryString = parsedUrl.search.slice(1) // Remove leading '?'
+		const query = new URLSearchParams(queryString.replace(/\+/g, "%2B"))
+
+		Logger.info(
+			"SharedUriHandler: Processing URI:" +
+				JSON.stringify({
+					path: path,
+					query: query,
+					scheme: parsedUrl.protocol,
+				}),
+		)
+
 		const visibleWebview = WebviewProvider.getVisibleInstance()
 
 		if (!visibleWebview) {
-			console.warn("SharedUriHandler: No visible webview found")
+			Logger.warn("SharedUriHandler: No visible webview found")
 			return false
 		}
 
@@ -34,42 +43,76 @@ export class SharedUriHandler {
 						await visibleWebview.controller.handleOpenRouterCallback(code)
 						return true
 					}
-					console.warn("SharedUriHandler: Missing code parameter for OpenRouter callback")
+					Logger.warn("SharedUriHandler: Missing code parameter for OpenRouter callback")
+					return false
+				}
+				case "/requesty": {
+					const code = query.get("code")
+					if (code) {
+						await visibleWebview.controller.handleRequestyCallback(code)
+						return true
+					}
+					Logger.warn("SharedUriHandler: Missing code parameter for Requesty callback")
 					return false
 				}
 				case "/auth": {
-					const token = query.get("token") ?? "codee"
-					const state = query.get("state")
+					const provider = query.get("provider")
+					const token = query.get("token")
 					const apiKey = query.get("apiKey")
 
-					console.log("@@@@ Auth callback received:", {
-						token: token,
-						state: state,
-					})
+					Logger.info(`SharedUriHandler - Auth callback received for ${provider} - ${path}`)
 
+					// const token = query.get("refreshToken") || query.get("idToken") || query.get("code")
 					if (token) {
 						await visibleWebview.controller.handleAuthCallback(token, apiKey)
 						return true
 					}
-					console.warn("SharedUriHandler: Missing idToken parameter for auth callback")
+					Logger.warn("SharedUriHandler: Missing idToken parameter for auth callback")
 					return false
 				}
+				case "/auth/oca": {
+					Logger.log("SharedUriHandler: Oca Auth callback received:", { path: path })
+
+					const code = query.get("code")
+					const state = query.get("state")
+
+					if (code && state) {
+						await visibleWebview.controller.handleOcaAuthCallback(code, state)
+						return true
+					}
+					Logger.warn("SharedUriHandler: Missing code parameter for auth callback")
+					return false
+				}
+				case "/task": {
+					const prompt = query.get("prompt")
+					if (prompt) {
+						await visibleWebview.controller.handleTaskCreation(prompt)
+						return true
+					}
+					Logger.warn("SharedUriHandler: Missing prompt parameter for task creation")
+					return false
+				}
+				// Match /mcp-auth/callback/{hash}
+				case path.match(/^\/mcp-auth\/callback\/[^/]+$/)?.input: {
+					const serverHash = path.split("/").pop()
+					const code = query.get("code")
+					const state = query.get("state")
+
+					if (!code || !serverHash) {
+						Logger.warn("SharedUriHandler: Missing code or hash in MCP OAuth callback")
+						return false
+					}
+
+					await visibleWebview.controller.handleMcpOAuthCallback(serverHash, code, state)
+					return true
+				}
 				default:
-					console.warn(`SharedUriHandler: Unknown path: ${path}`)
+					Logger.warn(`SharedUriHandler: Unknown path: ${path}`)
 					return false
 			}
 		} catch (error) {
-			console.error("SharedUriHandler: Error processing URI:", error)
+			Logger.error("SharedUriHandler: Error processing URI:", error)
 			return false
 		}
-	}
-
-	/**
-	 * Converts an HTTP URL to a vscode.Uri for unified processing
-	 * @param httpUrl The HTTP URL to convert
-	 * @returns vscode.Uri representation of the URL
-	 */
-	public static convertHttpUrlToUri(httpUrl: string): vscode.Uri {
-		return vscode.Uri.parse(httpUrl)
 	}
 }

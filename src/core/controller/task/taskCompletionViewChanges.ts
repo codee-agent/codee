@@ -1,4 +1,5 @@
 import { Empty, Int64Request } from "@shared/proto/cline/common"
+import { Logger } from "@/shared/services/Logger"
 import { Controller } from ".."
 
 /**
@@ -10,11 +11,12 @@ import { Controller } from ".."
 export async function taskCompletionViewChanges(controller: Controller, request: Int64Request): Promise<Empty> {
 	try {
 		if (request.value && controller.task) {
-			await controller.task.presentMultifileDiff(request.value, true)
+			// presentMultifileDiff is optional on ICheckpointManager, so capture then optionally invoke
+			await controller.task.checkpointManager?.presentMultifileDiff?.(request.value, true)
 		}
 		return Empty.create()
 	} catch (error) {
-		console.error("Error in taskCompletionViewChanges handler:", error)
+		Logger.error("Error in taskCompletionViewChanges handler:", error)
 		throw error
 	}
 }

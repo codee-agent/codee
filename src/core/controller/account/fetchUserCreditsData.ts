@@ -1,6 +1,6 @@
+import type { EmptyRequest } from "@shared/proto/cline/common"
 import { UserCreditsData } from "@/shared/proto/index.cline"
 import type { Controller } from "../index"
-import type { EmptyRequest } from "@shared/proto/cline/common"
 
 /**
  * Handles fetching all user credits data (balance, usage, payments)

@@ -17,8 +17,8 @@ const ReportBugPreview: React.FC<ReportBugPreviewProps> = ({ data }) => {
 	}, [data])
 
 	return (
-		<div className="bg-[var(--vscode-badge-background)] text-[var(--vscode-badge-foreground)] rounded-[3px] p-[14px]">
-			<h3 className="font-bold text-base mb-3 mt-0">{bugData.title || "Bug Report"}</h3>
+		<div className="bg-badge-background/50 text-badge-foreground rounded-xs p-3">
+			<h2 className="font-bold mb-3">{bugData.title || "Bug Report"}</h2>
 
 			<div className="space-y-3 text-sm">
 				{bugData.what_happened && (
@@ -65,7 +65,7 @@ const ReportBugPreview: React.FC<ReportBugPreviewProps> = ({ data }) => {
 
 				{bugData.cline_version && (
 					<div>
-						<div className="font-semibold">Codee Version</div>
+						<div className="font-semibold">Cline Version</div>
 						<MarkdownBlock markdown={bugData.cline_version} />
 					</div>
 				)}

@@ -2,7 +2,9 @@ import { McpServer } from "@shared/mcp"
 import { StringRequest } from "@shared/proto/cline/common"
 import { McpDownloadResponse } from "@shared/proto/cline/mcp"
 import axios from "axios"
-import { clineEnvConfig } from "@/config"
+import { ClineEnv } from "@/config"
+import { getAxiosSettings } from "@/shared/net"
+import { Logger } from "@/shared/services/Logger"
 import { Controller } from ".."
 import { sendChatButtonClickedEvent } from "../ui/subscribeToChatButtonClicked"
 
@@ -31,11 +33,12 @@ export async function downloadMcp(controller: Controller, request: StringRequest
 
 		// Fetch server details from marketplace
 		const response = await axios.post<McpDownloadResponse>(
-			`${clineEnvConfig.mcpBaseUrl}/download`,
+			`${ClineEnv.config().mcpBaseUrl}/download`,
 			{ mcpId },
 			{
 				headers: { "Content-Type": "application/json" },
 				timeout: 10000,
+				...getAxiosSettings(),
 			},
 		)
 
@@ -43,7 +46,7 @@ export async function downloadMcp(controller: Controller, request: StringRequest
 			throw new Error("Invalid response from MCP marketplace API")
 		}
 
-		console.log("[downloadMcp] Response from download API", { response })
+		Logger.log("[downloadMcp] Response from download API", { response })
 
 		const mcpDetails = response.data
 
@@ -73,7 +76,7 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 
 		// Initialize task and show chat view
 		await controller.initTask(task)
-		await sendChatButtonClickedEvent(controller.id)
+		await sendChatButtonClickedEvent()
 
 		// Return the download details directly
 		return McpDownloadResponse.create({
@@ -87,7 +90,7 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 			requiresApiKey: mcpDetails.requiresApiKey,
 		})
 	} catch (error) {
-		console.error("Failed to download MCP:", error)
+		Logger.error("Failed to download MCP:", error)
 		let errorMessage = "Failed to download MCP"
 
 		if (axios.isAxiosError(error)) {

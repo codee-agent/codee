@@ -1,5 +1,6 @@
 import type { ToggleCursorRuleRequest } from "@shared/proto/cline/file"
 import { ClineRulesToggles } from "@shared/proto/cline/file"
+import { Logger } from "@/shared/services/Logger"
 import type { Controller } from "../index"
 
 /**
@@ -12,7 +13,7 @@ export async function toggleCursorRule(controller: Controller, request: ToggleCu
 	const { rulePath, enabled } = request
 
 	if (!rulePath || typeof enabled !== "boolean") {
-		console.error("toggleCursorRule: Missing or invalid parameters", {
+		Logger.error("toggleCursorRule: Missing or invalid parameters", {
 			rulePath,
 			enabled: typeof enabled === "boolean" ? enabled : `Invalid: ${typeof enabled}`,
 		})
@@ -20,12 +21,12 @@ export async function toggleCursorRule(controller: Controller, request: ToggleCu
 	}
 
 	// Update the toggles in workspace state
-	const toggles = controller.cacheService.getWorkspaceStateKey("localCursorRulesToggles")
+	const toggles = controller.stateManager.getWorkspaceStateKey("localCursorRulesToggles")
 	toggles[rulePath] = enabled
-	controller.cacheService.setWorkspaceState("localCursorRulesToggles", toggles)
+	controller.stateManager.setWorkspaceState("localCursorRulesToggles", toggles)
 
 	// Get the current state to return in the response
-	const cursorToggles = controller.cacheService.getWorkspaceStateKey("localCursorRulesToggles")
+	const cursorToggles = controller.stateManager.getWorkspaceStateKey("localCursorRulesToggles")
 
 	return ClineRulesToggles.create({
 		toggles: cursorToggles,

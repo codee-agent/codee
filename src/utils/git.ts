@@ -1,5 +1,6 @@
 import { exec } from "child_process"
 import { promisify } from "util"
+import { Logger } from "@/shared/services/Logger"
 
 const execAsync = promisify(exec)
 const GIT_OUTPUT_LINE_LIMIT = 500
@@ -43,13 +44,13 @@ export async function searchCommits(query: string, cwd: string): Promise<GitComm
 	try {
 		const isInstalled = await checkGitInstalled()
 		if (!isInstalled) {
-			console.error("Git is not installed")
+			Logger.error("Git is not installed")
 			return []
 		}
 
 		const isRepo = await checkGitRepo(cwd)
 		if (!isRepo) {
-			console.error("Not a git repository")
+			Logger.error("Not a git repository")
 			return []
 		}
 
@@ -98,7 +99,7 @@ export async function searchCommits(query: string, cwd: string): Promise<GitComm
 
 		return commits
 	} catch (error) {
-		console.error("Error searching commits:", error)
+		Logger.error("Error searching commits:", error)
 		return []
 	}
 }
@@ -144,7 +145,7 @@ export async function getCommitInfo(hash: string, cwd: string): Promise<string> 
 		const output = summary + "\n\n" + diff.trim()
 		return truncateOutput(output)
 	} catch (error) {
-		console.error("Error getting commit info:", error)
+		Logger.error("Error getting commit info:", error)
 		return `Failed to get commit info: ${error instanceof Error ? error.message : String(error)}`
 	}
 }
@@ -180,8 +181,44 @@ export async function getWorkingState(cwd: string): Promise<string> {
 		const output = `Working directory changes:\n\n${status}\n\n${diff}`.trim()
 		return truncateOutput(output)
 	} catch (error) {
-		console.error("Error getting working state:", error)
+		Logger.error("Error getting working state:", error)
 		return `Failed to get working state: ${error instanceof Error ? error.message : String(error)}`
+	}
+}
+
+export async function getGitDiff(cwd: string, stagedOnly = false): Promise<string> {
+	try {
+		const isInstalled = await checkGitInstalled()
+		if (!isInstalled) {
+			throw new Error("Git is not installed")
+		}
+
+		const isRepo = await checkGitRepo(cwd)
+		if (!isRepo) {
+			throw new Error("Not a git repository")
+		}
+
+		let diff = ""
+		let command = "git --no-pager diff --staged --diff-filter=d"
+		if (await checkGitRepoHasCommits(cwd)) {
+			// Only run git diff if there are commits
+			const { stdout: staged } = await execAsync(command, { cwd })
+			diff = staged.trim()
+		}
+
+		if (!stagedOnly && !diff) {
+			command = "git --no-pager diff HEAD --diff-filter=d"
+			const { stdout: unstaged } = await execAsync(command, { cwd })
+			diff = unstaged.trim()
+		}
+
+		if (!diff) {
+			throw new Error("No changes in workspace for commit message")
+		}
+
+		return truncateOutput(`'${command}' Output:\n\n${diff}`.trim())
+	} catch (error) {
+		throw error
 	}
 }
 
@@ -216,7 +253,7 @@ export async function getGitRemoteUrls(cwd: string): Promise<string[]> {
 
 		return remotes.map((remote) => `${remote.name}: ${remote.url}`)
 	} catch (error) {
-		console.error("Error getting git remotes:", error)
+		Logger.error("Error getting git remotes:", error)
 		return []
 	}
 }
@@ -236,7 +273,7 @@ export async function getLatestGitCommitHash(cwd: string): Promise<string | null
 		const { stdout } = await execAsync("git rev-parse HEAD", { cwd })
 		return stdout.trim() || null
 	} catch (error) {
-		console.error("Error getting latest git commit hash:", error)
+		Logger.error("Error getting latest git commit hash:", error)
 		return null
 	}
 }
@@ -258,4 +295,16 @@ function truncateOutput(content: string): string {
 		`\n[...${lines.length - GIT_OUTPUT_LINE_LIMIT} lines omitted...]\n`,
 		...lines.slice(-afterLimit),
 	].join("\n")
+}
+
+// NEW: Additional functions for Stage 3 multi-workspace support
+// These are the ONLY new additions needed for workspace detection
+
+/**
+ * Check if a directory is a Git repository (Stage 3 requirement)
+ * @param dirPath - The directory path to check
+ * @returns True if it's a Git repository
+ */
+export async function isGitRepository(dirPath: string): Promise<boolean> {
+	return await checkGitRepo(dirPath)
 }

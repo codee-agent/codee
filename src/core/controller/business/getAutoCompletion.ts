@@ -1,9 +1,8 @@
-import { EmptyRequest } from "@/generated/nice-grpc/cline/common"
-import { Controller } from ".."
-import { AutoCompletionResponse } from "@/shared/proto/cline/business"
-
 //huqb
 import { getAutocompleteConfig } from "@continuedev/core/util/codaiConfigUtil"
+import { EmptyRequest } from "@/generated/nice-grpc/cline/common"
+import { AutoCompletionResponse } from "@/shared/proto/cline/business"
+import { Controller } from ".."
 
 // Business logic for getting auto-completion information
 export async function getAutoCompletion(_controller: Controller, _: EmptyRequest): Promise<AutoCompletionResponse> {

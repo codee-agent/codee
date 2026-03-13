@@ -1,8 +1,8 @@
-import type { Anthropic } from "@anthropic-ai/sdk"
 import { filterMessagesForClaudeCode } from "@/integrations/claude-code/message-filter"
 import { runClaudeCode } from "@/integrations/claude-code/run"
 import { ClaudeCodeModelId, claudeCodeDefaultModelId, claudeCodeModels } from "@/shared/api"
-import { CommonApiHandlerOptions, type ApiHandler } from ".."
+import { ClineStorageMessage } from "@/shared/messages/content"
+import { type ApiHandler, CommonApiHandlerOptions } from ".."
 import { withRetry } from "../retry"
 import { type ApiStream, ApiStreamUsageChunk } from "../transform/stream"
 
@@ -24,7 +24,7 @@ export class ClaudeCodeHandler implements ApiHandler {
 		baseDelay: 2000,
 		maxDelay: 15000,
 	})
-	async *createMessage(systemPrompt: string, messages: Anthropic.Messages.MessageParam[]): ApiStream {
+	async *createMessage(systemPrompt: string, messages: ClineStorageMessage[]): ApiStream {
 		// Filter out image blocks since Claude Code doesn't support them
 		const filteredMessages = filterMessagesForClaudeCode(messages)
 
@@ -113,15 +113,30 @@ export class ClaudeCodeHandler implements ApiHandler {
 							}
 							break
 						case "tool_use":
-							console.error(`tool_use is not supported yet. Received: ${JSON.stringify(content)}`)
+							// Yield tool_use blocks to the streaming pipeline for proper tool execution
+							yield {
+								type: "tool_calls",
+								tool_call: {
+									call_id: content.id,
+									function: {
+										id: content.id,
+										name: content.name,
+										arguments: JSON.stringify(content.input),
+									},
+								},
+							}
 							break
 					}
 				}
 
-				usage.inputTokens += message.usage.input_tokens
-				usage.outputTokens += message.usage.output_tokens
-				usage.cacheReadTokens = (usage.cacheReadTokens || 0) + (message.usage.cache_read_input_tokens || 0)
-				usage.cacheWriteTokens = (usage.cacheWriteTokens || 0) + (message.usage.cache_creation_input_tokens || 0)
+				// According to Anthropic's API documentation:
+				// https://docs.anthropic.com/en/api/messages#usage-object
+				// The `input_tokens` field already includes both `cache_read_input_tokens` and `cache_creation_input_tokens`.
+				// Therefore, we should not add cache tokens to the input_tokens count again, as this would result in double-counting.
+				usage.inputTokens = message.usage?.input_tokens ?? 0
+				usage.outputTokens = message.usage?.output_tokens ?? 0
+				usage.cacheReadTokens = message.usage?.cache_read_input_tokens ?? 0
+				usage.cacheWriteTokens = message.usage?.cache_creation_input_tokens ?? 0
 
 				continue
 			}

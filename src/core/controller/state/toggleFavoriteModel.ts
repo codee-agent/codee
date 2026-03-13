@@ -1,5 +1,6 @@
-import { telemetryService } from "@services/posthog/PostHogClientProvider"
 import { Empty, StringRequest } from "@shared/proto/cline/common"
+import { telemetryService } from "@/services/telemetry"
+import { Logger } from "@/shared/services/Logger"
 import { Controller } from ".."
 
 /**
@@ -15,21 +16,15 @@ export async function toggleFavoriteModel(controller: Controller, request: Strin
 		}
 
 		const modelId = request.value
-		const apiConfiguration = controller.cacheService.getApiConfiguration()
 
-		const favoritedModelIds = apiConfiguration.favoritedModelIds || []
+		const favoritedModelIds = controller.stateManager.getGlobalStateKey("favoritedModelIds")
 
 		// Toggle favorite status
 		const updatedFavorites = favoritedModelIds.includes(modelId)
 			? favoritedModelIds.filter((id) => id !== modelId)
 			: [...favoritedModelIds, modelId]
 
-		// Update the complete API configuration through cache service
-		const updatedApiConfiguration = {
-			...apiConfiguration,
-			favoritedModelIds: updatedFavorites,
-		}
-		controller.cacheService.setApiConfiguration(updatedApiConfiguration)
+		controller.stateManager.setGlobalState("favoritedModelIds", updatedFavorites)
 
 		// Capture telemetry for model favorite toggle
 		const isFavorited = !favoritedModelIds.includes(modelId)
@@ -40,7 +35,7 @@ export async function toggleFavoriteModel(controller: Controller, request: Strin
 
 		return Empty.create()
 	} catch (error) {
-		console.error(`Failed to toggle favorite status for model ${request.value}:`, error)
+		Logger.error(`Failed to toggle favorite status for model ${request.value}:`, error)
 		throw error
 	}
 }

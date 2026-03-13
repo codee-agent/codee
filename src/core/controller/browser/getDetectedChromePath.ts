@@ -1,5 +1,6 @@
 import { ChromePath } from "@shared/proto/cline/browser"
 import { EmptyRequest } from "@shared/proto/cline/common"
+import { Logger } from "@/shared/services/Logger"
 import { BrowserSession } from "../../../services/browser/BrowserSession"
 import { Controller } from "../index"
 
@@ -11,8 +12,7 @@ import { Controller } from "../index"
  */
 export async function getDetectedChromePath(controller: Controller, _: EmptyRequest): Promise<ChromePath> {
 	try {
-		const browserSettings = controller.cacheService.getGlobalStateKey("browserSettings")
-		const browserSession = new BrowserSession(controller.context, browserSettings)
+		const browserSession = new BrowserSession(controller.stateManager)
 		const result = await browserSession.getDetectedChromePath()
 
 		return ChromePath.create({
@@ -20,7 +20,7 @@ export async function getDetectedChromePath(controller: Controller, _: EmptyRequ
 			isBundled: result.isBundled,
 		})
 	} catch (error) {
-		console.error("Error getting detected Chrome path:", error)
+		Logger.error("Error getting detected Chrome path:", error)
 		return ChromePath.create({
 			path: "",
 			isBundled: false,

@@ -1,11 +1,14 @@
-import { Anthropic } from "@anthropic-ai/sdk"
 import { HuggingFaceModelId, huggingFaceDefaultModelId, huggingFaceModels, ModelInfo } from "@shared/api"
 import { calculateApiCostOpenAI } from "@utils/cost"
 import OpenAI from "openai"
+import type { ChatCompletionTool as OpenAITool } from "openai/resources/chat/completions"
+import { ClineStorageMessage } from "@/shared/messages/content"
+import { createOpenAIClient } from "@/shared/net"
 import { ApiHandler, CommonApiHandlerOptions } from "../"
 import { withRetry } from "../retry"
 import { convertToOpenAiMessages } from "../transform/openai-format"
 import { ApiStream } from "../transform/stream"
+import { getOpenAIToolParams, ToolCallProcessor } from "../transform/tool-call-processor"
 
 interface HuggingFaceHandlerOptions extends CommonApiHandlerOptions {
 	huggingFaceApiKey?: string
@@ -29,12 +32,9 @@ export class HuggingFaceHandler implements ApiHandler {
 			}
 
 			try {
-				this.client = new OpenAI({
+				this.client = createOpenAIClient({
 					baseURL: "https://router.huggingface.co/v1",
 					apiKey: this.options.huggingFaceApiKey,
-					defaultHeaders: {
-						"User-Agent": "Cline/1.0",
-					},
 				})
 			} catch (error: any) {
 				throw new Error(`Error creating Hugging Face client: ${error.message}`)
@@ -65,7 +65,7 @@ export class HuggingFaceHandler implements ApiHandler {
 	}
 
 	@withRetry()
-	async *createMessage(systemPrompt: string, messages: Anthropic.Messages.MessageParam[]): ApiStream {
+	async *createMessage(systemPrompt: string, messages: ClineStorageMessage[], tools?: OpenAITool[]): ApiStream {
 		try {
 			const client = this.ensureClient()
 			const model = this.getModel()
@@ -82,8 +82,10 @@ export class HuggingFaceHandler implements ApiHandler {
 				stream: true,
 				stream_options: { include_usage: true },
 				temperature: 0,
+				...getOpenAIToolParams(tools),
 			}
 
+			const toolCallProcessor = new ToolCallProcessor()
 			const stream = (await client.chat.completions.create(requestParams)) as any
 
 			let _chunkCount = 0
@@ -91,7 +93,7 @@ export class HuggingFaceHandler implements ApiHandler {
 
 			for await (const chunk of stream) {
 				_chunkCount++
-				const delta = chunk.choices[0]?.delta
+				const delta = chunk.choices?.[0]?.delta
 				if (delta?.content) {
 					_totalContent += delta.content
 
@@ -99,6 +101,10 @@ export class HuggingFaceHandler implements ApiHandler {
 						type: "text",
 						text: delta.content,
 					}
+				}
+
+				if (delta?.tool_calls) {
+					yield* toolCallProcessor.processToolCallDeltas(delta.tool_calls)
 				}
 
 				if (chunk.usage) {

@@ -6,6 +6,7 @@ import { useClickAway, useWindowSize } from "react-use"
 import { CODE_BLOCK_BG_COLOR } from "@/components/common/CodeBlock"
 import { BusinessServiceClient } from "@/services/grpc-client"
 import type { ChatState } from "../chat-view/types/chatTypes"
+import CodeIndex from "./CodeIndex"
 
 interface AdvancedAbilitiesModalProps {
 	isVisible: boolean
@@ -33,19 +34,19 @@ const AdvancedAbilitiesModal: React.FC<AdvancedAbilitiesModalProps> = ({
 
 	const handleMemorybank = (text: string) => {
 		BusinessServiceClient.setMemoryBank(StringRequest.create({ value: text }))
-			.then(async (response) => {
+			.then(async (response: any) => {
 				if (response.value) {
-					let language = "en"
-					try {
-						language = (await BusinessServiceClient.getCurrentLanguage(EmptyRequest.create())).value
-					} catch (e) {
-						console.log("getCurrentLanguage err: ", e)
-					}
-					const initPrompt =
+          let language = 'en'
+          try {
+            language = (await BusinessServiceClient.getCurrentLanguage(EmptyRequest.create())).value
+          } catch (e) {
+            console.log('getCurrentLanguage err: ', e)
+          }
+					let initPrompt =
 						response.value == "init"
 							? `Please carefully read the relevant introduction documents of this project then initialize memory bank, ${
-									language === "zh-CN" ? "请用中文生成文档" : "please use English"
-								}`
+                language === "zh-CN" ? "请用中文生成文档" : "please use English"
+              }`
 							: response.value == "update"
 								? "update memory bank"
 								: "follow your custom instructions"
@@ -132,6 +133,7 @@ const AdvancedAbilitiesModal: React.FC<AdvancedAbilitiesModalProps> = ({
 						{t("advanced.memorybank.remember")}
 					</VSCodeButton>
 				)}
+				<CodeIndex />
 			</div>
 		</div>
 	)

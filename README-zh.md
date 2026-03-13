@@ -16,11 +16,11 @@
 </div>
 
 
-大家好，Codee（扣迪）是一款AI编程的工具，这个名字取自Code 和 engineer 这两个单词。扣迪将是你开发工作中最得力的软件工程师！
+<a href="https://github.com/codee-agent/codee" target="_blank" style="text-decoration: underline;"><strong>扣迪(Codee)</strong></a>是一款AI编程的工具，这个名字取自Code 和 engineer 这两个单词。扣迪将是你开发工作中最得力的软件工程师！
 
 ## Codee的主要功能
 
-1. **包括**代码编写与编辑、命令行的操作、MCP的使用、AI模型的配置等
+1. **包括**代码编写与编辑、命令行的操作、MCP的使用、AI模型的配置、向量数据搜索、Pencil工具、Skill的使用、YOLO模式的运行等
 2. **添加界面的国际化，多语言的支持**：English、简体中文
 3. **添加了自动代码补全的功能**，需要自己去配置模型，最好配置带有coder优化的模型，这样效果才出众  
 4. **为了减少Token的消耗和减少大模型的上下文长度的消耗**  ，做了系统描述词的优化策略

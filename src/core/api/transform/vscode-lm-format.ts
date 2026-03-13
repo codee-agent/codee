@@ -1,5 +1,6 @@
 import { Anthropic } from "@anthropic-ai/sdk"
 import * as vscode from "vscode"
+import { Logger } from "@/shared/services/Logger"
 
 /**
  * Safely converts a value into a plain object.
@@ -23,7 +24,7 @@ export function asObjectSafe(value: any): object {
 
 		return {}
 	} catch (error) {
-		console.warn("Cline <Language Model API>: Failed to parse object:", error)
+		Logger.warn("Codee <Language Model API>: Failed to parse object:", error)
 		return {}
 	}
 }
@@ -161,7 +162,7 @@ export function convertToAnthropicRole(
 export function convertToAnthropicMessage(vsCodeLmMessage: vscode.LanguageModelChatMessage): Anthropic.Messages.Message {
 	const anthropicRole = convertToAnthropicRole(vsCodeLmMessage.role)
 	if (anthropicRole !== "assistant") {
-		throw new Error("Cline <Language Model API>: Only assistant messages are supported.")
+		throw new Error("Codee <Language Model API>: Only assistant messages are supported.")
 	}
 
 	return {

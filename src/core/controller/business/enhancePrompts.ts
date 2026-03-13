@@ -1,8 +1,8 @@
 import { enhancePrompt } from "@/services/enhance_prompts"
-import { Controller } from ".."
 import { EnhancePromptsRequest } from "@/shared/proto/cline/business"
-import { Mode } from "@/shared/storage/types"
 import { String } from "@/shared/proto/cline/common"
+import { Mode } from "@/shared/storage/types"
+import { Controller } from ".."
 
 // Business logic for enhancing prompts
 export async function enhancePrompts(_controller: Controller, request: EnhancePromptsRequest): Promise<String> {

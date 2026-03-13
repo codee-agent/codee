@@ -1,4 +1,5 @@
 import { GetOrganizationCreditsRequest, OrganizationCreditsData, OrganizationUsageTransaction } from "@shared/proto/cline/account"
+import { Logger } from "@/shared/services/Logger"
 import type { Controller } from "../index"
 
 /**
@@ -45,11 +46,12 @@ export async function getOrganizationCredits(
 						promptTokens: tx.promptTokens,
 						totalTokens: tx.totalTokens,
 						userId: tx.userId,
+						operation: tx.operation,
 					}),
 				) || [],
 		})
 	} catch (error) {
-		console.error(`Failed to fetch organization credits data: ${error}`)
+		Logger.error(`Failed to fetch organization credits data: ${error}`)
 		throw error
 	}
 }

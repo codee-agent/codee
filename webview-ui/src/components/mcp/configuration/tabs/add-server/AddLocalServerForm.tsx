@@ -8,11 +8,11 @@ type AddLocalServerFormProps = {
 	onServerAdded: () => void
 }
 
-const AddLocalServerForm = ({ onServerAdded }: AddLocalServerFormProps) => {
+const AddLocalServerForm = ({}: AddLocalServerFormProps) => {
 	return (
 		<FormContainer>
-			<div className="text-[var(--vscode-foreground)]">
-				Add a local MCP server by configuring it in <code>codee_mcp_settings.json</code>. You'll need to specify the
+			<div className="text-(--vscode-foreground)">
+				Add a local MCP server by configuring it in <code>cline_mcp_settings.json</code>. You'll need to specify the
 				server name, command, arguments, and any required environment variables in the JSON configuration. Learn more
 				<VSCodeLink href={LINKS.DOCUMENTATION.LOCAL_MCP_SERVER_DOCS} style={{ display: "inline" }}>
 					here.
@@ -27,7 +27,7 @@ const AddLocalServerForm = ({ onServerAdded }: AddLocalServerFormProps) => {
 					})
 				}}
 				style={{ width: "100%", marginBottom: "5px", marginTop: 8 }}>
-				Open codee_mcp_settings.json
+				Open cline_mcp_settings.json
 			</VSCodeButton>
 		</FormContainer>
 	)

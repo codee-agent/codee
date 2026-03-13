@@ -1,7 +1,9 @@
-import { Anthropic } from "@anthropic-ai/sdk"
 import { ModelInfo, requestyDefaultModelId, requestyDefaultModelInfo } from "@shared/api"
 import { calculateApiCostOpenAI } from "@utils/cost"
 import OpenAI from "openai"
+import { toRequestyServiceStringUrl } from "@/shared/clients/requesty"
+import { ClineStorageMessage } from "@/shared/messages/content"
+import { createOpenAIClient } from "@/shared/net"
 import { ApiHandler, CommonApiHandlerOptions } from "../index"
 import { withRetry } from "../retry"
 import { convertToOpenAiMessages } from "../transform/openai-format"
@@ -40,12 +42,12 @@ export class RequestyHandler implements ApiHandler {
 				throw new Error("Requesty API key is required")
 			}
 			try {
-				this.client = new OpenAI({
-					baseURL: this.options.requestyBaseUrl || "https://router.requesty.ai/v1",
+				this.client = createOpenAIClient({
+					baseURL: toRequestyServiceStringUrl(this.options.requestyBaseUrl),
 					apiKey: this.options.requestyApiKey,
 					defaultHeaders: {
 						"HTTP-Referer": "https://cline.bot",
-						"X-Title": "Cline",
+						"X-Title": "Codee",
 					},
 				})
 			} catch (error: any) {
@@ -56,7 +58,7 @@ export class RequestyHandler implements ApiHandler {
 	}
 
 	@withRetry()
-	async *createMessage(systemPrompt: string, messages: Anthropic.Messages.MessageParam[]): ApiStream {
+	async *createMessage(systemPrompt: string, messages: ClineStorageMessage[]): ApiStream {
 		const client = this.ensureClient()
 		const model = this.getModel()
 
@@ -82,7 +84,6 @@ export class RequestyHandler implements ApiHandler {
 				? thinking
 				: {}
 
-		// @ts-ignore-next-line
 		const stream = await client.chat.completions.create({
 			model: model.id,
 			max_tokens: model.info.maxTokens || undefined,
@@ -97,7 +98,7 @@ export class RequestyHandler implements ApiHandler {
 		let lastUsage: any
 
 		for await (const chunk of stream) {
-			const delta = chunk.choices[0]?.delta
+			const delta = chunk.choices?.[0]?.delta
 			if (delta?.content) {
 				yield {
 					type: "text",
