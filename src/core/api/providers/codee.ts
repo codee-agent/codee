@@ -34,8 +34,6 @@ export class CodeeHandler implements ApiHandler {
 	}
 
 	private ensureClient(): OpenAI {
-		this.options.openAiBaseUrl = 'https://nextapi.zen5prod.com/v1'
-		this.options.openAiApiKey = 'sk-zTkNbydejxc7f3vLFPE74PlSYrUayIHerP7IK5ruCdTKFHXZ'//huqb
 		if (!this.client) {
 			if (!this.options.openAiApiKey) {
 				throw new Error("Codee API key is required")
