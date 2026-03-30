@@ -78,15 +78,15 @@ export class CodeeHandler implements ApiHandler {
 			maxTokens = undefined
 		}
 		if (modelId.includes("glm-4.7")) {
-			maxTokens = 131000
+			maxTokens = 32000
 			temperature = 0.7
 		}
 		if (modelId.includes("kimi-k2.5")) {
-			maxTokens = 131000
+			maxTokens = 32000
 			temperature = 1.0//The recommended temperature will be 1.0 for Thinking mode and 0.6 for Instant mode.
 		}
 		if (modelId.includes("glm-5")) {
-			maxTokens = 131000
+			maxTokens = 32000
 			temperature = 0.5
 		}
 
